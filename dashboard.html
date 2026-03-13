@@ -451,7 +451,7 @@
             try {
                 // Connect relatively
                 socket = io({
-                    transports: ['websocket', 'polling'],
+                    transports: ['polling', 'websocket'], // Reliable polling first
                     reconnection: true,
                     reconnectionAttempts: 10
                 });

@@ -2081,11 +2081,11 @@
 
             // Connect to the same server that served this page
             socket = io({
-                transports: ['websocket', 'polling'],
+                transports: ['polling', 'websocket'], // Force polling first for mobile reliability
                 reconnection: true,
                 reconnectionAttempts: 10,
                 reconnectionDelay: 1000,
-                timeout: 20000,
+                timeout: 30000,
             });
 
             // ── Connection events ──────────────────────────────────────────────
@@ -2132,7 +2132,6 @@
                     if (type === 'posts') {
                         localStorage.setItem('tnpvc_local_posts',   JSON.stringify(data));
                         renderPosts();
-                        console.log('📬 Feed Synced');
                     }
                     if (type === 'notifications')  localStorage.setItem('tnpvc_notifications', JSON.stringify(data));
                     if (type === 'followers')      localStorage.setItem('tnpvc_followers',     JSON.stringify(data));
@@ -2143,20 +2142,18 @@
                         renderMessagesList();
                     }
                 } catch (e) {
-                    console.warn("Storage Full: Cleaning up old data...");
-                    // If storage is full, keep only newest 50 posts to free space
-                    if (type === 'posts') {
-                        const trimmed = data.slice(0, 50);
-                        localStorage.setItem('tnpvc_local_posts', JSON.stringify(trimmed));
-                        renderPosts();
-                    }
+                    console.warn("Sync Storage Error:", e);
                 }
                 
-                // Visual Sync Indicator
+                // Visual Sync Indicator (Pulse)
                 const liveEl = document.getElementById('socketLive');
                 if (liveEl) {
-                    liveEl.style.background = 'rgba(118, 75, 162, 0.4)';
-                    setTimeout(() => liveEl.style.background = 'rgba(37, 211, 102, 0.1)', 800);
+                    liveEl.style.background = '#22c55e';
+                    liveEl.style.color = '#fff';
+                    setTimeout(() => {
+                        liveEl.style.background = 'rgba(37, 211, 102, 0.1)';
+                        liveEl.style.color = '#22c55e';
+                    }, 500);
                 }
 
                 loadInitialData(); 

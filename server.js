@@ -11,10 +11,10 @@ const server = http.createServer(app);
 // ─── Socket.IO config optimised for Render.com (free tier) ───────────────────
 const io = new Server(server, {
     cors: { origin: '*', methods: ['GET', 'POST'] },
-    transports: ['websocket', 'polling'],   
-    pingInterval: 10000,   
-    pingTimeout: 25000,    
-    maxHttpBufferSize: 5e7, // 50MB (Crucial for high-res images in Base64)
+    transports: ['polling', 'websocket'], // Polling first for max compatibility
+    pingInterval: 10000, 
+    pingTimeout: 60000, // Increased to 60s for slow mobile networks
+    maxHttpBufferSize: 5e7,
     upgradeTimeout: 30000,
     allowUpgrades: true,
     cookie: false
