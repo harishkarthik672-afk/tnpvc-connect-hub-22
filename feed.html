@@ -2079,13 +2079,12 @@
                 return;
             }
 
-            const serverUrl = window.location.origin;
-            socket = io(serverUrl, {
+            // Connect to the same server that served this page
+            socket = io({
                 transports: ['websocket', 'polling'],
                 reconnection: true,
-                reconnectionAttempts: Infinity,
+                reconnectionAttempts: 10,
                 reconnectionDelay: 1000,
-                reconnectionDelayMax: 5000,
                 timeout: 20000,
             });
 
@@ -2131,12 +2130,17 @@
                 if (type === 'users')        localStorage.setItem('tnpvc_all_users',     JSON.stringify(data));
                 if (type === 'posts') {
                     localStorage.setItem('tnpvc_local_posts',   JSON.stringify(data));
-                    // Immediate refresh for posts
                     renderPosts();
-                    // If user is at the top of the page, keep them there. 
-                    // If a new post arrived, maybe show a "New Post" indicator? 
-                    // For now, just render is enough.
+                    console.log('📬 Feed Synced');
                 }
+                
+                // Visual Sync Indicator
+                const liveEl = document.getElementById('socketLive');
+                if (liveEl) {
+                    liveEl.style.background = 'rgba(118, 75, 162, 0.2)';
+                    setTimeout(() => liveEl.style.background = 'rgba(37, 211, 102, 0.1)', 1000);
+                }
+
                 if (type === 'notifications') localStorage.setItem('tnpvc_notifications', JSON.stringify(data));
                 if (type === 'followers')    localStorage.setItem('tnpvc_followers',     JSON.stringify(data));
                 if (type === 'prods')        localStorage.setItem('tnpvc_local_prods',  JSON.stringify(data));
@@ -2144,17 +2148,9 @@
                 if (type === 'messages') {
                     localStorage.setItem('tnpvc_messages', JSON.stringify(data));
                     renderMessagesList();
-                    // Show browser push notification if recipient & tab hidden
-                    const msgs = data;
-                    if (msgs.length && currentUser) {
-                        const last = msgs[msgs.length - 1];
-                        if ((last.to || '').trim() === currentUser.name.trim() && document.visibilityState !== 'visible') {
-                            showPushNotification('💬 New message from ' + last.from, last.text);
-                        }
-                    }
                 }
 
-                loadInitialData(); // Fallback to refresh everything else
+                loadInitialData(); 
                 if (currentUser && currentUser.setupComplete) applyUserUI();
 
                 // Refresh open chat modal live
