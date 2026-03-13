@@ -2000,6 +2000,7 @@
         let selectedFiles = []; // Array of up to 5 files
         let selectedProductFiles = []; // Array of up to 5 files
         let setupPfpData = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200";
+        let onlineUsersList = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             // Splash screen: fade out after 1.5s
@@ -2036,55 +2037,133 @@
         }
 
         function initSocket() {
-            if (typeof io !== 'undefined') {
-                const serverUrl = window.location.origin;
-                socket = io(serverUrl);
-
-                socket.on('initial_sync', (db) => {
-                    localStorage.setItem('tnpvc_all_users', JSON.stringify(db.all_users || []));
-                    localStorage.setItem('tnpvc_local_posts', JSON.stringify(db.posts || []));
-                    localStorage.setItem('tnpvc_notifications', JSON.stringify(db.notifications || []));
-                    localStorage.setItem('tnpvc_followers', JSON.stringify(db.followers || {}));
-                    localStorage.setItem('tnpvc_local_prods', JSON.stringify(db.prods || []));
-                    localStorage.setItem('tnpvc_messages', JSON.stringify(db.messages || []));
-                    localStorage.setItem('tnpvc_work_updates', JSON.stringify(db.work_updates || []));
-                    loadInitialData();
-                    if (currentUser && currentUser.setupComplete) applyUserUI();
-                });
-
-                socket.on('db_updated', ({ type, data }) => {
-                    if (type === 'users') localStorage.setItem('tnpvc_all_users', JSON.stringify(data));
-                    if (type === 'posts') localStorage.setItem('tnpvc_local_posts', JSON.stringify(data));
-                    if (type === 'notifications') localStorage.setItem('tnpvc_notifications', JSON.stringify(data));
-                    if (type === 'followers') localStorage.setItem('tnpvc_followers', JSON.stringify(data));
-                    if (type === 'prods') localStorage.setItem('tnpvc_local_prods', JSON.stringify(data));
-                    if (type === 'work_updates') localStorage.setItem('tnpvc_work_updates', JSON.stringify(data));
-                    if (type === 'users') localStorage.setItem('tnpvc_all_users', JSON.stringify(data));
-                    if (type === 'messages') {
-                        localStorage.setItem('tnpvc_messages', JSON.stringify(data));
-                        // Trigger Browser Notification for new message
-                        const lastMsg = data[data.length - 1];
-                        if (lastMsg && lastMsg.to === currentUser.name && document.visibilityState !== 'visible') {
-                            showPushNotification('New Message from ' + lastMsg.from, lastMsg.text);
-                        }
-                    }
-
-                    loadInitialData();
-                    if (currentUser && currentUser.setupComplete) applyUserUI();
-                    
-                    // Chat Modal Refresh (Not covered by loadInitialData)
-                    if (document.getElementById('chatModal').classList.contains('active') && window.currentChatTarget) {
-                        renderChatHistory(window.currentChatTarget);
-                    }
-
-                    // Visitor Profile Refresh if viewing someone
-                    if (document.getElementById('userProfileView').classList.contains('active')) {
-                        const vName = document.getElementById('visitorName').textContent;
-                        if (vName) viewUserProfile(vName);
-                    }
-                });
+            if (typeof io === 'undefined') {
+                console.warn('Socket.IO not loaded — running offline mode');
+                return;
             }
 
+            const serverUrl = window.location.origin;
+            socket = io(serverUrl, {
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionAttempts: Infinity,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                timeout: 20000,
+            });
+
+            // ── Connection events ──────────────────────────────────────────────
+            socket.on('connect', () => {
+                console.log('✅ Socket connected:', socket.id);
+                // Tell server who we are so it can route messages/notifs to us
+                if (currentUser && currentUser.name) {
+                    socket.emit('user_online', currentUser.name.trim());
+                }
+            });
+
+            socket.on('disconnect', (reason) => {
+                console.warn('⚠️ Socket disconnected:', reason);
+            });
+
+            socket.on('connect_error', (err) => {
+                console.warn('Socket error:', err.message);
+            });
+
+            // ── Initial DB sync from server ────────────────────────────────────
+            socket.on('initial_sync', (db) => {
+                localStorage.setItem('tnpvc_all_users',     JSON.stringify(db.all_users     || []));
+                localStorage.setItem('tnpvc_local_posts',   JSON.stringify(db.posts          || []));
+                localStorage.setItem('tnpvc_notifications', JSON.stringify(db.notifications  || []));
+                localStorage.setItem('tnpvc_followers',     JSON.stringify(db.followers      || {}));
+                localStorage.setItem('tnpvc_local_prods',  JSON.stringify(db.prods          || []));
+                localStorage.setItem('tnpvc_messages',      JSON.stringify(db.messages       || []));
+                localStorage.setItem('tnpvc_work_updates',  JSON.stringify(db.work_updates   || []));
+                loadInitialData();
+                if (currentUser && currentUser.setupComplete) applyUserUI();
+            });
+
+            // ── Broadcast updates (posts, users, followers, etc.) ──────────────
+            socket.on('db_updated', ({ type, data }) => {
+                if (type === 'users')        localStorage.setItem('tnpvc_all_users',     JSON.stringify(data));
+                if (type === 'posts')        localStorage.setItem('tnpvc_local_posts',   JSON.stringify(data));
+                if (type === 'notifications') localStorage.setItem('tnpvc_notifications', JSON.stringify(data));
+                if (type === 'followers')    localStorage.setItem('tnpvc_followers',     JSON.stringify(data));
+                if (type === 'prods')        localStorage.setItem('tnpvc_local_prods',  JSON.stringify(data));
+                if (type === 'work_updates') localStorage.setItem('tnpvc_work_updates',  JSON.stringify(data));
+                if (type === 'messages') {
+                    localStorage.setItem('tnpvc_messages', JSON.stringify(data));
+                    // Show browser push notification if recipient & tab hidden
+                    const msgs = data;
+                    if (msgs.length && currentUser) {
+                        const last = msgs[msgs.length - 1];
+                        if ((last.to || '').trim() === currentUser.name.trim() && document.visibilityState !== 'visible') {
+                            showPushNotification('💬 New message from ' + last.from, last.text);
+                        }
+                    }
+                }
+
+                loadInitialData();
+                if (currentUser && currentUser.setupComplete) applyUserUI();
+
+                // Refresh open chat modal live
+                const chatModal = document.getElementById('chatModal');
+                if (chatModal && chatModal.classList.contains('active') && window.currentChatTarget) {
+                    renderChatHistory(window.currentChatTarget);
+                }
+
+                // Refresh open notification/follower views
+                if (type === 'notifications') {
+                    updateNotifBadge();
+                    if (document.getElementById('notificationsView').classList.contains('active')) {
+                        renderNotifications();
+                    }
+                }
+
+                // Refresh visitor profile if open
+                if (document.getElementById('userProfileView').classList.contains('active')) {
+                    const vName = (document.getElementById('visitorName') || {}).textContent;
+                    if (vName) viewUserProfile(vName);
+                }
+            });
+
+            // ── Targeted: new notification arrives for this user ───────────────
+            socket.on('new_notification', (notif) => {
+                let notifs = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
+                // de-dup
+                notifs = notifs.filter(n => n.id !== notif.id);
+                notifs.unshift(notif);
+                localStorage.setItem('tnpvc_notifications', JSON.stringify(notifs));
+                updateNotifBadge();
+                showPushNotification('🔔 New notification', notif.from + ' sent you a request');
+                if (document.getElementById('notificationsView').classList.contains('active')) {
+                    renderNotifications();
+                }
+            });
+
+            // ── Targeted: incoming direct message ────────────────────────────
+            socket.on('incoming_message', (msg) => {
+                let msgs = JSON.parse(localStorage.getItem('tnpvc_messages') || '[]');
+                msgs.push(msg);
+                localStorage.setItem('tnpvc_messages', JSON.stringify(msgs));
+
+                // If chat modal is already open with this sender, refresh instantly
+                const chatModal = document.getElementById('chatModal');
+                if (chatModal && chatModal.classList.contains('active') && window.currentChatTarget === msg.from) {
+                    renderChatHistory(msg.from);
+                } else {
+                    // Show push notification
+                    showPushNotification('💬 ' + msg.from, msg.text || '(message)');
+                }
+                // Update messages list tab
+                renderMessagesList();
+            });
+
+            // ── Online users list ──────────────────────────────────────────────
+            socket.on('online_users', (names) => {
+                onlineUsersList = names || [];
+            });
+
+            // ── Search input listener ──────────────────────────────────────────
             const searchInput = document.getElementById('memberSearch');
             if (searchInput) {
                 searchInput.addEventListener('input', renderSearch);
@@ -2096,6 +2175,10 @@
             if (savedUser) {
                 currentUser = JSON.parse(savedUser);
                 if (currentUser.name) currentUser.name = currentUser.name.trim(); // Normalize name
+
+                if (socket && socket.connected) {
+                    socket.emit('user_online', currentUser.name);
+                }
 
                 // fallback user ID for existing users (and migration for users missing prefix)
                 if (!currentUser.userId || !currentUser.userId.startsWith('tnpvc#')) {
@@ -2190,6 +2273,9 @@
         function loginSuccess() {
             localStorage.setItem('tnpvc_user', JSON.stringify(currentUser));
             document.getElementById('authOverlay').style.display = 'none';
+            if (socket && socket.connected && currentUser.name) {
+                socket.emit('user_online', currentUser.name.trim());
+            }
             showSetup();
         }
 
@@ -2278,6 +2364,10 @@
 
             localStorage.setItem('tnpvc_user', JSON.stringify(currentUser));
             syncToCentral(oldName);
+
+            if (socket && socket.connected && currentUser.name) {
+                socket.emit('user_online', currentUser.name.trim());
+            }
 
             document.getElementById('setupOverlay').style.display = 'none';
             document.body.style.overflow = 'auto';
@@ -3251,13 +3341,16 @@
 
             list.innerHTML = chatUsrs.map(uName => {
                 let userObj = allUsers.find(u => u.name === uName) || { name: uName, avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' };
-                // Get last message
                 let thread = messages.filter(m => (m.from === myName && m.to === uName) || (m.from === uName && m.to === myName));
                 let lastMsg = thread.length > 0 ? thread[thread.length - 1] : null;
+                const isOnline = onlineUsersList.includes(uName);
 
                 return `
                     <div style="display:flex; align-items:center; gap:15px; padding:12px; background:white; border-bottom:1px solid #efefef; cursor:pointer;" onclick="openChatModal('${uName}')">
-                        <img src="${userObj.avatar}" style="width:50px; height:50px; border-radius:50%; object-fit:cover;">
+                        <div style="position:relative;">
+                            <img src="${userObj.avatar}" style="width:50px; height:50px; border-radius:50%; object-fit:cover;">
+                            ${isOnline ? `<div style="position:absolute; bottom:2px; right:2px; width:12px; height:12px; background:#25D366; border:2px solid white; border-radius:50%;"></div>` : ''}
+                        </div>
                         <div style="flex:1;">
                             <div style="font-weight:700; font-size:1rem; color:#050505;">${userObj.name}</div>
                             <div style="font-size:0.85rem; color:#65676b; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${lastMsg ? (lastMsg.from === myName ? 'You: ' : '') + lastMsg.text : 'Tap to start chatting'}</div>
