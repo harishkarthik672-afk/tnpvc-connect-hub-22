@@ -11,9 +11,10 @@ const server = http.createServer(app);
 // ─── Socket.IO config optimised for Render.com (free tier) ───────────────────
 const io = new Server(server, {
     cors: { origin: '*', methods: ['GET', 'POST'] },
-    transports: ['websocket', 'polling'],   // websocket first, fallback to polling
-    pingInterval: 10000,   // send ping every 10s
-    pingTimeout: 25000,    // wait 25s for pong before disconnecting
+    transports: ['websocket', 'polling'],   
+    pingInterval: 10000,   
+    pingTimeout: 25000,    
+    maxHttpBufferSize: 5e7, // 50MB (Crucial for high-res images in Base64)
     upgradeTimeout: 30000,
     allowUpgrades: true,
     cookie: false

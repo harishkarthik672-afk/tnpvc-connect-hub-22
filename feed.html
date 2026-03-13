@@ -2045,11 +2045,11 @@
                 }, 600);
             }, 1000);
 
-            // 1. Load User Auth First
-            initAuth();
-            
-            // 2. Init Socket (which now knows who the user is)
+            // 1. Init Socket first (global variable initialization)
             initSocket();
+            
+            // 2. Load User Auth (will use socket if connected)
+            initAuth();
             
             requestNotificationPermission();
             lucide.createIcons();
@@ -2127,27 +2127,36 @@
 
             // ── Broadcast updates (posts, users, followers, etc.) ──────────────
             socket.on('db_updated', ({ type, data }) => {
-                if (type === 'users')        localStorage.setItem('tnpvc_all_users',     JSON.stringify(data));
-                if (type === 'posts') {
-                    localStorage.setItem('tnpvc_local_posts',   JSON.stringify(data));
-                    renderPosts();
-                    console.log('📬 Feed Synced');
+                try {
+                    if (type === 'users')          localStorage.setItem('tnpvc_all_users',     JSON.stringify(data));
+                    if (type === 'posts') {
+                        localStorage.setItem('tnpvc_local_posts',   JSON.stringify(data));
+                        renderPosts();
+                        console.log('📬 Feed Synced');
+                    }
+                    if (type === 'notifications')  localStorage.setItem('tnpvc_notifications', JSON.stringify(data));
+                    if (type === 'followers')      localStorage.setItem('tnpvc_followers',     JSON.stringify(data));
+                    if (type === 'prods')          localStorage.setItem('tnpvc_local_prods',   JSON.stringify(data));
+                    if (type === 'work_updates')   localStorage.setItem('tnpvc_work_updates',  JSON.stringify(data));
+                    if (type === 'messages') {
+                        localStorage.setItem('tnpvc_messages', JSON.stringify(data));
+                        renderMessagesList();
+                    }
+                } catch (e) {
+                    console.warn("Storage Full: Cleaning up old data...");
+                    // If storage is full, keep only newest 50 posts to free space
+                    if (type === 'posts') {
+                        const trimmed = data.slice(0, 50);
+                        localStorage.setItem('tnpvc_local_posts', JSON.stringify(trimmed));
+                        renderPosts();
+                    }
                 }
                 
                 // Visual Sync Indicator
                 const liveEl = document.getElementById('socketLive');
                 if (liveEl) {
-                    liveEl.style.background = 'rgba(118, 75, 162, 0.2)';
-                    setTimeout(() => liveEl.style.background = 'rgba(37, 211, 102, 0.1)', 1000);
-                }
-
-                if (type === 'notifications') localStorage.setItem('tnpvc_notifications', JSON.stringify(data));
-                if (type === 'followers')    localStorage.setItem('tnpvc_followers',     JSON.stringify(data));
-                if (type === 'prods')        localStorage.setItem('tnpvc_local_prods',  JSON.stringify(data));
-                if (type === 'work_updates') localStorage.setItem('tnpvc_work_updates',  JSON.stringify(data));
-                if (type === 'messages') {
-                    localStorage.setItem('tnpvc_messages', JSON.stringify(data));
-                    renderMessagesList();
+                    liveEl.style.background = 'rgba(118, 75, 162, 0.4)';
+                    setTimeout(() => liveEl.style.background = 'rgba(37, 211, 102, 0.1)', 800);
                 }
 
                 loadInitialData(); 

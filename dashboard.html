@@ -412,10 +412,16 @@
             </div>
         </div>
 
-        <div id="lastUpdated">—</div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div id="lastUpdated">—</div>
+            <div id="socketStatus" style="font-size:0.75rem; font-weight:800; text-transform:uppercase; display:flex; align-items:center; gap:6px;">
+                <div id="statusDot" style="width:8px; height:8px; border-radius:50%; background:#94a3b8;"></div>
+                <span id="statusText" style="color:#94a3b8;">Offline</span>
+            </div>
+        </div>
     </div>
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         const ADMIN_ID = "8122696217";
         const ADMIN_PASS = "karthik8122";
@@ -443,20 +449,39 @@
 
         function initDashboard() {
             try {
-                const serverUrl = window.location.origin;
-                socket = io(serverUrl);
+                // Connect relatively
+                socket = io({
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    reconnectionAttempts: 10
+                });
+
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+
+                socket.on('connect', () => {
+                    if (statusDot) statusDot.style.background = '#22c55e';
+                    if (statusText) { statusText.textContent = 'Connected'; statusText.style.color = '#22c55e'; }
+                    console.log('✅ Dashboard connected');
+                });
+
+                socket.on('disconnect', () => {
+                    if (statusDot) statusDot.style.background = '#ef4444';
+                    if (statusText) { statusText.textContent = 'Disconnected'; statusText.style.color = '#ef4444'; }
+                });
 
                 socket.on('initial_sync', (data) => {
-                    db.users    = data.all_users     || [];
-                    db.posts    = data.posts          || [];
-                    db.prods    = data.prods          || [];
-                    db.updates  = data.work_updates   || [];
-                    db.messages = data.messages       || [];
-                    db.followers= data.followers      || {};
+                    db.users     = data.all_users      || [];
+                    db.posts     = data.posts           || [];
+                    db.prods     = data.prods           || [];
+                    db.updates   = data.work_updates    || [];
+                    db.messages  = data.messages        || [];
+                    db.followers = data.followers       || {};
                     refresh();
                 });
 
                 socket.on('db_updated', ({ type, data }) => {
+                    console.log('🔄 Dashboard Data Update:', type);
                     if (type === 'users')        db.users    = data;
                     if (type === 'posts')        db.posts    = data;
                     if (type === 'prods')        db.prods    = data;
