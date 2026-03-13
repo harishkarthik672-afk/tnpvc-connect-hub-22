@@ -7,6 +7,7 @@
     <title>TNPVC Community Updates | Showcase Your Work</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="i18n.js" defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2012,8 +2013,12 @@
                 }, 600);
             }, 1000);
 
-            initSocket();
+            // 1. Load User Auth First
             initAuth();
+            
+            // 2. Init Socket (which now knows who the user is)
+            initSocket();
+            
             requestNotificationPermission();
             lucide.createIcons();
             loadInitialData();
@@ -2085,13 +2090,21 @@
             // ── Broadcast updates (posts, users, followers, etc.) ──────────────
             socket.on('db_updated', ({ type, data }) => {
                 if (type === 'users')        localStorage.setItem('tnpvc_all_users',     JSON.stringify(data));
-                if (type === 'posts')        localStorage.setItem('tnpvc_local_posts',   JSON.stringify(data));
+                if (type === 'posts') {
+                    localStorage.setItem('tnpvc_local_posts',   JSON.stringify(data));
+                    // Immediate refresh for posts
+                    renderPosts();
+                    // If user is at the top of the page, keep them there. 
+                    // If a new post arrived, maybe show a "New Post" indicator? 
+                    // For now, just render is enough.
+                }
                 if (type === 'notifications') localStorage.setItem('tnpvc_notifications', JSON.stringify(data));
                 if (type === 'followers')    localStorage.setItem('tnpvc_followers',     JSON.stringify(data));
                 if (type === 'prods')        localStorage.setItem('tnpvc_local_prods',  JSON.stringify(data));
                 if (type === 'work_updates') localStorage.setItem('tnpvc_work_updates',  JSON.stringify(data));
                 if (type === 'messages') {
                     localStorage.setItem('tnpvc_messages', JSON.stringify(data));
+                    renderMessagesList();
                     // Show browser push notification if recipient & tab hidden
                     const msgs = data;
                     if (msgs.length && currentUser) {
@@ -2102,7 +2115,7 @@
                     }
                 }
 
-                loadInitialData();
+                loadInitialData(); // Fallback to refresh everything else
                 if (currentUser && currentUser.setupComplete) applyUserUI();
 
                 // Refresh open chat modal live
@@ -2779,14 +2792,14 @@
                 const localPosts = JSON.parse(localStorage.getItem('tnpvc_local_posts') || '[]');
                 localPosts.unshift(post);
                 localStorage.setItem('tnpvc_local_posts', JSON.stringify(localPosts));
+                renderPosts();
             }
             
-            // Immediate local update for better UX
-            renderPosts();
-
             closeModals();
             selectedFiles = [];
             document.getElementById('postText').value = '';
+            // Scroll to top to see his own post if he just posted
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             lucide.createIcons();
         }
 
