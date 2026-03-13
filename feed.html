@@ -1234,7 +1234,7 @@
                 <a href="javascript:void(0)" id="nav-notifications-btn" onclick="switchView('notifications')" 
                     style="color: #1b0f3a; text-decoration: none; position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: #f0f2f5; border-radius: 50%; transition: 0.2s;">
                     <i data-lucide="bell" size="24"></i>
-                    <div id="notif-badge-top" class="notif-badge" style="display:none; position: absolute; top: -2px; right: -2px; height: 16px; min-width: 16px; font-size: 0.65rem; border: 2px solid white; z-index: 10;"></div>
+                    <div id="notif-badge-top" class="notif-badge" style="display:none; position: absolute; top: -2px; right: -2px; height: 16px; min-width: 16px; font-size: 0.65rem; border: 2px solid white; z-index: 10; align-items: center; justify-content: center; background: #f3425f; color: white; border-radius: 50%; font-weight: bold;"></div>
                 </a>
             </div>
 
@@ -1994,7 +1994,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script>
         function triggerFireball() {
@@ -2065,12 +2065,49 @@
         }
 
         function showPushNotification(title, body) {
+            // Browser Push Notification
             if ("Notification" in window && Notification.permission === "granted") {
-                new Notification(title, {
-                    body: body,
-                    icon: 'logo.png'
-                });
+                try {
+                    new Notification(title, {
+                        body: body,
+                        icon: 'favicon.png'
+                    });
+                } catch(e) {}
             }
+            
+            // In-app Toast Notification
+            showToast(title + ': ' + body);
+        }
+
+        function showToast(text) {
+            let toast = document.createElement('div');
+            toast.className = 'in-app-toast';
+            toast.innerHTML = `
+                <div style="background: white; color: #1b0f3a; padding: 12px 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+                            display: flex; align-items: center; gap: 10px; border-left: 5px solid #764ba2; font-weight: 600;">
+                    <i data-lucide="bell" size="18" style="color: #764ba2;"></i>
+                    <span>${text}</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            lucide.createIcons();
+            
+            // Add style if not exists
+            if (!document.getElementById('toastStyle')) {
+                let s = document.createElement('style');
+                s.id = 'toastStyle';
+                s.innerHTML = `
+                    .in-app-toast {
+                        position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10000;
+                        animation: toastIn 0.3s ease forwards, toastOut 0.3s ease 3.7s forwards;
+                    }
+                    @keyframes toastIn { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+                    @keyframes toastOut { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -20px); } }
+                `;
+                document.head.appendChild(s);
+            }
+
+            setTimeout(() => toast.remove(), 4000);
         }
 
         function initSocket() {
@@ -2114,26 +2151,52 @@
 
             // ── Initial DB sync from server ────────────────────────────────────
             socket.on('initial_sync', (db) => {
+                // Pre-process data to trim all names for consistency
+                if (db.all_users) db.all_users.forEach(u => { if(u.name) u.name = u.name.trim(); });
+                if (db.notifications) db.notifications.forEach(n => { 
+                    if(n.from) n.from = n.from.trim(); 
+                    if(n.to) n.to = n.to.trim(); 
+                });
+                
                 localStorage.setItem('tnpvc_all_users',     JSON.stringify(db.all_users     || []));
                 localStorage.setItem('tnpvc_local_posts',   JSON.stringify(db.posts          || []));
                 localStorage.setItem('tnpvc_notifications', JSON.stringify(db.notifications  || []));
                 localStorage.setItem('tnpvc_followers',     JSON.stringify(db.followers      || {}));
-                localStorage.setItem('tnpvc_local_prods',  JSON.stringify(db.prods          || []));
+                localStorage.setItem('tnpvc_local_prods',   JSON.stringify(db.prods          || []));
                 localStorage.setItem('tnpvc_messages',      JSON.stringify(db.messages       || []));
                 localStorage.setItem('tnpvc_work_updates',  JSON.stringify(db.work_updates   || []));
+
                 loadInitialData();
-                if (currentUser && currentUser.setupComplete) applyUserUI();
+                if (currentUser && currentUser.setupComplete) {
+                    if(currentUser.name) currentUser.name = currentUser.name.trim();
+                    applyUserUI();
+                }
             });
 
-            // ── Broadcast updates (posts, users, followers, etc.) ──────────────
+            // ── Real-time updates handler ──────────────────────────────────────
             socket.on('db_updated', ({ type, data }) => {
+                console.log('🔄 Data sync:', type);
+                
+                // Clean data names
+                if (type === 'users') data.forEach(u => { if(u.name) u.name = u.name.trim(); });
+                if (type === 'notifications') data.forEach(n => { 
+                    if(n.from) n.from = n.from.trim(); 
+                    if(n.to) n.to = n.to.trim(); 
+                });
+
                 try {
                     if (type === 'users')          localStorage.setItem('tnpvc_all_users',     JSON.stringify(data));
                     if (type === 'posts') {
                         localStorage.setItem('tnpvc_local_posts',   JSON.stringify(data));
                         renderPosts();
                     }
-                    if (type === 'notifications')  localStorage.setItem('tnpvc_notifications', JSON.stringify(data));
+                    if (type === 'notifications') {
+                        localStorage.setItem('tnpvc_notifications', JSON.stringify(data));
+                        updateNotifBadge();
+                        if (document.getElementById('notificationsView').classList.contains('active')) {
+                            renderNotifications();
+                        }
+                    }
                     if (type === 'followers')      localStorage.setItem('tnpvc_followers',     JSON.stringify(data));
                     if (type === 'prods')          localStorage.setItem('tnpvc_local_prods',   JSON.stringify(data));
                     if (type === 'work_updates')   localStorage.setItem('tnpvc_work_updates',  JSON.stringify(data));
@@ -2142,10 +2205,10 @@
                         renderMessagesList();
                     }
                 } catch (e) {
-                    console.warn("Sync Storage Error:", e);
+                    console.error('LocalStorage sync failed', e);
                 }
-                
-                // Visual Sync Indicator (Pulse)
+
+                // Global pulse indicator for sync visibility
                 const liveEl = document.getElementById('socketLive');
                 if (liveEl) {
                     liveEl.style.background = '#22c55e';
@@ -2156,26 +2219,15 @@
                     }, 500);
                 }
 
-                loadInitialData(); 
-                if (currentUser && currentUser.setupComplete) applyUserUI();
-
                 // Refresh open chat modal live
                 const chatModal = document.getElementById('chatModal');
                 if (chatModal && chatModal.classList.contains('active') && window.currentChatTarget) {
                     renderChatHistory(window.currentChatTarget);
                 }
 
-                // Refresh open notification/follower views
-                if (type === 'notifications') {
-                    updateNotifBadge();
-                    if (document.getElementById('notificationsView').classList.contains('active')) {
-                        renderNotifications();
-                    }
-                }
-
                 // Refresh visitor profile if open
                 if (document.getElementById('userProfileView').classList.contains('active')) {
-                    const vName = (document.getElementById('visitorName') || {}).textContent;
+                    const vName = (document.getElementById('visitorNameHeader') || {}).textContent;
                     if (vName) viewUserProfile(vName);
                 }
             });
@@ -2383,8 +2435,12 @@
         }
 
         function syncToCentral(oldName) {
+            if (currentUser.name) currentUser.name = currentUser.name.trim();
+            const myName = currentUser.name;
+            const searchName = (oldName || myName).trim();
+
             let allUsers = JSON.parse(localStorage.getItem('tnpvc_all_users') || '[]');
-            const idx = allUsers.findIndex(u => u.name === (oldName || currentUser.name));
+            const idx = allUsers.findIndex(u => (u.name || '').trim() === searchName);
             if (idx > -1) allUsers[idx] = currentUser;
             else allUsers.push(currentUser);
             localStorage.setItem('tnpvc_all_users', JSON.stringify(allUsers));
@@ -2528,20 +2584,22 @@
         }
 
         function updateNotifBadge() {
-            const elTab = document.getElementById('notif-badge-el-tab');
             const elTop = document.getElementById('notif-badge-top');
+            const elTab = document.getElementById('notif-badge-el-tab'); // May not exist
             if (!currentUser) return;
             const notifs = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
-            const count = notifs.filter(n => (n.to || "").trim() === currentUser.name.trim() && n.status === 'pending').length;
+            const myName = (currentUser.name || "").trim();
+            const count = notifs.filter(n => (n.to || "").trim() === myName && n.status === 'pending').length;
             
             [elTab, elTop].forEach(badge => {
                 if (badge) {
                     if (count > 0) {
                         badge.style.display = 'flex';
-                        badge.innerHTML = count;
+                        badge.innerText = count > 99 ? '99+' : count;
+                        console.log('Badge updated:', count);
                     } else {
                         badge.style.display = 'none';
-                        badge.innerHTML = '';
+                        badge.innerText = '';
                     }
                 }
             });
@@ -3531,8 +3589,8 @@
                 const isPending = n.status === 'pending';
                 return `
                     <div style="display:flex; align-items:center; gap:12px; padding:12px; background:white; border-radius:12px; border:1px solid #efefef; ${isPending ? 'border-left: 4px solid #764ba2;' : ''}">
-                        <div style="width:44px; height:44px; border-radius:50%; overflow:hidden; border:1px solid #eee;">
-                            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(n.from)}&background=f0f2f5&color=666" style="width:100%; height:100%; object-fit:cover;">
+                        <div style="width:44px; height:44px; border-radius:50%; overflow:hidden; border:1px solid #eee; flex-shrink:0;">
+                            <img src="${n.fromAvatar || 'https://ui-avatars.com/api/?name='+encodeURIComponent(n.from)+'&background=f0f2f5&color=666'}" style="width:100%; height:100%; object-fit:cover;">
                         </div>
                         <div style="flex:1;">
                             <div style="font-size:0.9rem; color:#050505;">
@@ -3667,7 +3725,24 @@
         }
 
         function toggleFollow(btn, targetName) {
-            if (btn.textContent === 'Requested') return;
+            const me = (currentUser.name || '').trim();
+            const target = (targetName || '').trim();
+            
+            if (btn.textContent === 'Requested') {
+                // Cancel request
+                btn.textContent = 'Follow';
+                btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                btn.style.color = 'white';
+                
+                if (socket) {
+                    socket.emit('unfollow', { from: me, to: target });
+                } else {
+                    let notifs = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
+                    notifs = notifs.filter(n => !(n.from.trim() === me && n.to.trim() === target && n.type === 'follow_request'));
+                    localStorage.setItem('tnpvc_notifications', JSON.stringify(notifs));
+                }
+                return;
+            }
 
             if (btn.textContent === 'Follow') {
                 btn.textContent = 'Requested';
@@ -3676,9 +3751,9 @@
 
                 const notif = {
                     id: Date.now(),
-                    from: currentUser.name.trim(),
+                    from: me,
                     fromAvatar: currentUser.avatar,
-                    to: targetName.trim(),
+                    to: target,
                     type: 'follow_request',
                     status: 'pending',
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -3688,47 +3763,48 @@
                     socket.emit('send_notification', notif);
                 } else {
                     let notifs = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
-                    notifs = notifs.filter(n => !(n.from === currentUser.name && n.to === targetName && n.type === 'follow_request'));
+                    notifs = notifs.filter(n => !(n.from.trim() === me && n.to.trim() === target && n.type === 'follow_request'));
                     notifs.unshift(notif);
                     localStorage.setItem('tnpvc_notifications', JSON.stringify(notifs));
                 }
-                setTimeout(() => alert('Follow request sent to ' + targetName), 100);
-
             } else if (btn.textContent === 'Following') {
                 btn.textContent = 'Follow';
-                btn.style.background = 'var(--fb-blue)';
+                btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
                 btn.style.color = 'white';
 
                 if (socket) {
-                    socket.emit('unfollow', { target: targetName.trim(), me: currentUser.name.trim() });
+                    socket.emit('unfollow', { from: me, to: target });
                 } else {
                     let followers = JSON.parse(localStorage.getItem('tnpvc_followers') || '{}');
-                    const target = targetName.trim();
-                    const me = currentUser.name.trim();
-                    if (followers[target]) {
-                        followers[target] = followers[target].filter(f => f.trim() !== me);
-                        localStorage.setItem('tnpvc_followers', JSON.stringify(followers));
-                    }
-
+                    Object.keys(followers).forEach(k => {
+                        if (k.trim() === target) {
+                            followers[k] = followers[k].filter(f => f.trim() !== me);
+                        }
+                    });
+                    localStorage.setItem('tnpvc_followers', JSON.stringify(followers));
+                    
                     let notifs = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
                     notifs = notifs.filter(n => !(n.from.trim() === me && n.to.trim() === target && n.type === 'follow_request'));
                     localStorage.setItem('tnpvc_notifications', JSON.stringify(notifs));
                 }
+            }
 
-                if (document.getElementById('visitorNameHeader').innerText === targetName) {
-                    viewUserProfile(targetName);
-                }
+            // Refresh view if on profile page
+            const visitorNameHeader = document.getElementById('visitorNameHeader');
+            if (visitorNameHeader && visitorNameHeader.innerText === targetName) {
+                viewUserProfile(targetName);
             }
         }
 
         function viewUserProfile(name) {
-            if (currentUser && name === currentUser.name) {
+            const targetUName = (name || '').trim();
+            const myUName = (currentUser.name || '').trim();
+
+            if (targetUName === myUName) {
                 switchView('account');
                 return;
             }
 
-            const targetUName = name.trim();
-            const myUName = (currentUser.name || '').trim();
             let allUsers = JSON.parse(localStorage.getItem('tnpvc_all_users') || '[]');
             let vUser = allUsers.find(u => (u.name || '').trim() === targetUName);
             if (!vUser) return;
