@@ -3053,7 +3053,7 @@
                         lucide.createIcons();
                     }, 1000);
                 } else {
-                    alert('Upload failed. Server might be under load. Try again.');
+                    alert('Upload failed (Status: ' + xhr.status + '). ' + (xhr.responseText || 'Server error.'));
                     overlay.style.display = 'none';
                 }
             };

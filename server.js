@@ -29,8 +29,8 @@ const corsHandler = cors({
 });
 app.use(corsHandler);
 
-app.use(bodyParser.json({ limit: '100mb' }));
-app.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 app.use(express.static(path.join(__dirname, '.')));
 
 // Ping route for diagnostic button
@@ -276,8 +276,15 @@ io.on('connection', (socket) => {
 
 // ─── API Endpoint For Progress Uploads ──────────────────────────────
 app.post('/api/upload-post', (req, res) => {
+    console.log('--- Incoming Post Upload ---');
     const post = req.body;
-    if (!post || !post.user) return res.status(400).send('Invalid post data');
+    if (!post || !post.user) {
+        console.error('❌ Invalid post data received');
+        return res.status(400).send('Invalid post data');
+    }
+
+    const mediaSize = post.media ? (JSON.stringify(post.media).length / 1024 / 1024).toFixed(2) : 0;
+    console.log(`User: ${post.user} | Media Size: ${mediaSize} MB | Caption: ${post.caption ? post.caption.substring(0, 20) + '...' : 'None'}`);
 
     dbCache.posts.unshift(post);
     writeDB();
@@ -285,6 +292,7 @@ app.post('/api/upload-post', (req, res) => {
     // Notify all clients via socket that a new post was added
     io.emit('db_updated', { type: 'posts', data: dbCache.posts });
     
+    console.log('✅ Post uploaded and broadcasted successfully');
     res.status(200).send('Post uploaded successfully');
 });
 
