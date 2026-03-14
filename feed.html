@@ -3770,8 +3770,8 @@
                 btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
                 btn.style.color = 'white';
                 
-                if (socket) {
-                    socket.emit('unfollow', { from: me, to: target });
+                if (socket && socket.connected) {
+                    socket.emit('unfollow', { me: me, target: target });
                 } else {
                     let notifs = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
                     notifs = notifs.filter(n => !(n.from.trim() === me && n.to.trim() === target && n.type === 'follow_request'));
@@ -3810,8 +3810,8 @@
                 btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
                 btn.style.color = 'white';
 
-                if (socket) {
-                    socket.emit('unfollow', { from: me, to: target });
+                if (socket && socket.connected) {
+                    socket.emit('unfollow', { me: me, target: target });
                 } else {
                     let followers = JSON.parse(localStorage.getItem('tnpvc_followers') || '{}');
                     Object.keys(followers).forEach(k => {
