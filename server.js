@@ -10,14 +10,14 @@ const server = http.createServer(app);
 
 // ─── Socket.IO config optimised for Render.com (free tier) ───────────────────
 const io = new Server(server, {
-    cors: { origin: '*', methods: ['GET', 'POST'] },
-    transports: ['polling', 'websocket'], // Polling first for max compatibility
+    cors: { 
+        origin: ["https://www.tnpvc.co.in", "https://tnpvc.co.in", "http://localhost:3000", "http://127.0.0.1:3000"],
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    transports: ['websocket', 'polling'], // Try websocket first for better CORS bypass
     pingInterval: 10000, 
-    pingTimeout: 60000, // Increased to 60s for slow mobile networks
-    maxHttpBufferSize: 5e7,
-    upgradeTimeout: 30000,
-    allowUpgrades: true,
-    cookie: false
+    pingTimeout: 60000
 });
 
 const PORT = process.env.PORT || 3000;

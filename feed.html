@@ -2134,9 +2134,9 @@
             console.log('Connecting to:', BACKEND_URL);
 
             socket = io(BACKEND_URL, {
-                transports: ['polling', 'websocket'],
+                transports: ['websocket', 'polling'], // Try websocket first
                 reconnection: true,
-                reconnectionAttempts: 20,
+                reconnectionAttempts: 25,
                 reconnectionDelay: 2000,
             });
 
