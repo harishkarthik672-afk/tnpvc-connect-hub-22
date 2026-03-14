@@ -4,321 +4,258 @@ const { Server } = require("socket.io");
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-
-const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
 
-// ─── Socket.IO config optimised for Render.com (free tier) ───────────────────
+// ─── Socket.IO config optimised ─────────────────────────────────────────────
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    },
-    maxHttpBufferSize: 5e8 // Increase limit to 500MB
+    cors: { origin: "*", methods: ["GET", "POST"] },
+    maxHttpBufferSize: 5e8 
 });
 
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'db.json');
 
-const corsHandler = cors({
-    origin: "*",
-    methods: ["GET", "POST"]
-});
-app.use(corsHandler);
-
-// Extremely high limits to bypass local/app-level 413 errors
+app.use(cors({ origin: "*", methods: ["GET", "POST"] }));
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use(express.static(path.join(__dirname, '.')));
 
-// Ping route for diagnostic button
-app.get('/ping', (req, res) => {
-    res.send('pong ' + new Date().toLocaleTimeString());
-});
+// ─── MongoDB Connection ──────────────────────────────────────────────────────
+const MONGO_URI = "mongodb+srv://harishkarthik672_db_user:m2lvRLHv0wV7yFev@tnpvcofficialwebsite.ikz3lb3.mongodb.net/tnpvc_db?retryWrites=true&w=majority&appName=tnpvcofficialwebsite";
 
-app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dashboard.html'));
-});
+mongoose.connect(MONGO_URI)
+    .then(() => {
+        console.log('✅ Connected to MongoDB Atlas');
+        migrateIfNeeded();
+    })
+    .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// ─── In-memory DB ─────────────────────────────────────────────────────────────
-let dbCache = {
-    all_users: [], posts: [], notifications: [],
-    followers: {}, prods: [], messages: [], work_updates: []
-};
+// ─── Schemas & Models ────────────────────────────────────────────────────────
+const User = mongoose.model('User', new mongoose.Schema({
+    userId: String, name: String, email: String, avatar: String, 
+    shop: String, location: String, bio: String, setupComplete: Boolean
+}, { timestamps: true }));
 
-try {
-    if (fs.existsSync(DB_PATH)) {
-        const raw = fs.readFileSync(DB_PATH, 'utf8');
-        dbCache = { ...dbCache, ...JSON.parse(raw) };
-        console.log('DB loaded successfully');
-    }
-} catch (e) {
-    console.error("Could not load DB:", e.message);
-}
+const Post = mongoose.model('Post', new mongoose.Schema({
+    id: Number, user: String, avatar: String, media: [String], caption: String,
+    likes: { type: Number, default: 0 }, likedBy: [String],
+    comments: [{ user: String, text: String, avatar: String, time: String }],
+    time: String
+}, { timestamps: true }));
 
-// Debounced write to avoid too many disk writes
-let writeTimer = null;
-const writeDB = () => {
-    // Safety check: Don't overwrite with empty core data if it looks like a crash or reset
-    if (dbCache.all_users.length === 0 && dbCache.posts.length === 0 && dbCache.messages.length === 0) {
-        console.warn('⚠️ writeDB skipped: dbCache looks dangerously empty.');
-        return;
-    }
+const Notification = mongoose.model('Notification', new mongoose.Schema({
+    id: Number, from: String, fromAvatar: String, to: String, type: String, status: String, time: String
+}, { timestamps: true }));
 
-    clearTimeout(writeTimer);
-    writeTimer = setTimeout(() => {
+const Message = mongoose.model('Message', new mongoose.Schema({
+    id: Number, from: String, to: String, text: String, time: String
+}, { timestamps: true }));
+
+const WorkUpdate = mongoose.model('WorkUpdate', new mongoose.Schema({
+    id: Number, user: String, avatar: String, given: String, address: String, time: String
+}, { timestamps: true }));
+
+const Product = mongoose.model('Product', new mongoose.Schema({
+    id: Number, user: String, name: String, price: String, contact: String, media: [String]
+}, { timestamps: true }));
+
+const Follower = mongoose.model('Follower', new mongoose.Schema({
+    targetUser: String, followersList: [String]
+}));
+
+// ─── Migration Logic ────────────────────────────────────────────────────────
+async function migrateIfNeeded() {
+    const userCount = await User.countDocuments();
+    if (userCount === 0 && fs.existsSync(DB_PATH)) {
+        console.log('🔄 Migrating local db.json to MongoDB...');
         try {
-            fs.writeFileSync(DB_PATH, JSON.stringify(dbCache, null, 2));
-        } catch(e) {
-            console.error('DB write error:', e.message);
+            const raw = fs.readFileSync(DB_PATH, 'utf8');
+            const data = JSON.parse(raw);
+            if (data.all_users) await User.insertMany(data.all_users);
+            if (data.posts) await Post.insertMany(data.posts);
+            if (data.notifications) await Notification.insertMany(data.notifications);
+            if (data.messages) await Message.insertMany(data.messages);
+            if (data.work_updates) await WorkUpdate.insertMany(data.work_updates);
+            if (data.prods) await Product.insertMany(data.prods);
+            
+            if (data.followers) {
+                for (let target of Object.keys(data.followers)) {
+                    await Follower.create({ targetUser: target, followersList: data.followers[target] });
+                }
+            }
+            console.log('✅ Migration complete');
+        } catch (e) {
+            console.error('❌ Migration failed:', e.message);
         }
-    }, 500);
-};
-
-// ─── Track online users: name → socket.id ────────────────────────────────────
-const onlineUsers = {};  // { "UserName": "socket_id" }
-
-function broadcastOnlineUsers() {
-    io.emit('online_users', Object.keys(onlineUsers));
+    }
 }
 
-// ─── Socket.IO Events ─────────────────────────────────────────────────────────
-io.on('connection', (socket) => {
+// ─── Utility to fetch full state ─────────────────────────────────────────────
+async function getFullState() {
+    const all_users = await User.find().lean();
+    const posts = await Post.find().sort({ createdAt: -1 }).lean();
+    const notifications = await Notification.find().sort({ createdAt: -1 }).lean();
+    const messages = await Message.find().lean();
+    const work_updates = await WorkUpdate.find().sort({ createdAt: -1 }).lean();
+    const prods = await Product.find().sort({ createdAt: -1 }).lean();
+    const followersRaw = await Follower.find().lean();
+    
+    const followers = {};
+    followersRaw.forEach(f => { followers[f.targetUser] = f.followersList; });
+
+    return { all_users, posts, notifications, messages, work_updates, prods, followers };
+}
+
+const onlineUsers = {}; 
+
+// ─── Socket.IO Events ────────────────────────────────────────────────────────
+io.on('connection', async (socket) => {
     console.log('Connected:', socket.id);
+    
+    socket.emit('initial_sync', await getFullState());
 
-    // Send full DB state to the newly connected client
-    socket.emit('initial_sync', dbCache);
-
-    // ── User goes online ──────────────────────────────────────────────────────
     socket.on('user_online', (userName) => {
         if (userName) {
             onlineUsers[userName.trim()] = socket.id;
             socket.data.userName = userName.trim();
-            broadcastOnlineUsers();
+            io.emit('online_users', Object.keys(onlineUsers));
         }
     });
 
-    // ── Sync User Profile ─────────────────────────────────────────────────────
-    socket.on('sync_user', (userData) => {
-        const trimmedName = (userData.name || '').trim();
-        userData.name = trimmedName;
-        const idx = dbCache.all_users.findIndex(u => (u.name || '').trim() === trimmedName);
-        if (idx > -1) dbCache.all_users[idx] = userData;
-        else dbCache.all_users.push(userData);
-        writeDB();
-        io.emit('db_updated', { type: 'users', data: dbCache.all_users });
+    socket.on('sync_user', async (userData) => {
+        const name = (userData.name || '').trim();
+        await User.findOneAndUpdate({ name }, userData, { upsert: true });
+        io.emit('db_updated', { type: 'users', data: await User.find().lean() });
     });
 
-    // ── Create Post ───────────────────────────────────────────────────────────
-    socket.on('create_post', (postData) => {
-        console.log('New Post received from:', postData.user);
-        dbCache.posts.unshift(postData);
-        writeDB();
-        io.emit('db_updated', { type: 'posts', data: dbCache.posts });
+    socket.on('create_post', async (postData) => {
+        await Post.create(postData);
+        io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).lean() });
     });
 
-    // ── Create Product ────────────────────────────────────────────────────────
-    socket.on('create_product', (prodData) => {
-        dbCache.prods.unshift(prodData);
-        writeDB();
-        io.emit('db_updated', { type: 'prods', data: dbCache.prods });
+    socket.on('create_product', async (prodData) => {
+        await Product.create(prodData);
+        io.emit('db_updated', { type: 'prods', data: await Product.find().sort({ createdAt: -1 }).lean() });
     });
 
-    // ── Create Work Update ────────────────────────────────────────────────────
-    socket.on('create_work_update', (updateData) => {
-        if (!dbCache.work_updates) dbCache.work_updates = [];
-        dbCache.work_updates.unshift(updateData);
-        writeDB();
-        io.emit('db_updated', { type: 'work_updates', data: dbCache.work_updates });
-    }); // Closing bracket added here
+    socket.on('create_work_update', async (updateData) => {
+        await WorkUpdate.create(updateData);
+        io.emit('db_updated', { type: 'work_updates', data: await WorkUpdate.find().sort({ createdAt: -1 }).lean() });
+    });
 
-    // ── Send Notification / Follow Request ────────────────────────────────────
-    socket.on('send_notification', (notifData) => {
+    socket.on('send_notification', async (notifData) => {
         const from = (notifData.from || '').trim();
-        const to   = (notifData.to   || '').trim();
-        if (!from || !to) return;
+        const to = (notifData.to || '').trim();
+        await Notification.deleteMany({ from, to, type: 'follow_request' });
+        await Notification.create(notifData);
+        io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).lean() });
+        
+        if (onlineUsers[to]) io.to(onlineUsers[to]).emit('new_notification', notifData);
+    });
 
-        // Remove old duplicate
-        dbCache.notifications = dbCache.notifications.filter(n =>
-            !(n.from.trim() === from && n.to.trim() === to && n.type === notifData.type)
-        );
-        notifData.from = from;
-        notifData.to   = to;
-        dbCache.notifications.unshift(notifData);
-        writeDB();
-
-        // Broadcast updated notifications to all
-        io.emit('db_updated', { type: 'notifications', data: dbCache.notifications });
-
-        // ALSO send a targeted "ping" to the recipient if they're online
-        const recipientSocketId = onlineUsers[to];
-        if (recipientSocketId) {
-            io.to(recipientSocketId).emit('new_notification', notifData);
+    socket.on('accept_follow', async ({ notifId, from, to }) => {
+        await Notification.findOneAndUpdate({ id: notifId }, { status: 'accepted' });
+        const follower = await Follower.findOne({ targetUser: to });
+        if (follower) {
+            if (!follower.followersList.includes(from)) {
+                follower.followersList.push(from);
+                await follower.save();
+            }
+        } else {
+            await Follower.create({ targetUser: to, followersList: [from] });
         }
+        
+        io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).lean() });
+        const followersRaw = await Follower.find().lean();
+        const followers = {};
+        followersRaw.forEach(f => { followers[f.targetUser] = f.followersList; });
+        io.emit('db_updated', { type: 'followers', data: followers });
     });
 
-    // ── Accept Follow ─────────────────────────────────────────────────────────
-    socket.on('accept_follow', ({ notifId, from, to }) => {
-        const trimmedFrom = (from || '').trim();
-        const trimmedTo   = (to   || '').trim();
-        const notif = dbCache.notifications.find(n => n.id == notifId);
-        if (notif) notif.status = 'accepted';
+    socket.on('remove_notification', async (notifId) => {
+        await Notification.deleteOne({ id: notifId });
+        io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).lean() });
+    });
 
-        if (!dbCache.followers[trimmedTo]) dbCache.followers[trimmedTo] = [];
-        if (!dbCache.followers[trimmedTo].some(f => f.trim() === trimmedFrom)) {
-            dbCache.followers[trimmedTo].push(trimmedFrom);
+    socket.on('unfollow', async ({ target, me }) => {
+        const follower = await Follower.findOne({ targetUser: target });
+        if (follower) {
+            follower.followersList = follower.followersList.filter(f => f !== me);
+            await follower.save();
         }
-        writeDB();
-        io.emit('db_updated', { type: 'notifications', data: dbCache.notifications });
-        io.emit('db_updated', { type: 'followers',     data: dbCache.followers });
-        io.emit('db_updated', { type: 'users',         data: dbCache.all_users });
+        await Notification.deleteMany({ from: me, to: target, type: 'follow_request' });
+        
+        const followersRaw = await Follower.find().lean();
+        const followers = {};
+        followersRaw.forEach(f => { followers[f.targetUser] = f.followersList; });
+        io.emit('db_updated', { type: 'followers', data: followers });
+        io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).lean() });
     });
 
-    // ── Decline / Cancel Follow ───────────────────────────────────────────────
-    socket.on('remove_notification', (notifId) => {
-        dbCache.notifications = dbCache.notifications.filter(n => n.id != notifId);
-        writeDB();
-        io.emit('db_updated', { type: 'notifications', data: dbCache.notifications });
-    });
-
-    // ── Unfollow ──────────────────────────────────────────────────────────────
-    socket.on('unfollow', ({ target, me }) => {
-        const trimmedTarget = (target || '').trim();
-        const trimmedMe     = (me     || '').trim();
-        if (dbCache.followers[trimmedTarget]) {
-            dbCache.followers[trimmedTarget] = dbCache.followers[trimmedTarget].filter(f => f.trim() !== trimmedMe);
-        }
-        dbCache.notifications = dbCache.notifications.filter(n =>
-            !(n.from.trim() === trimmedMe && n.to.trim() === trimmedTarget && n.type === 'follow_request')
-        );
-        writeDB();
-        io.emit('db_updated', { type: 'followers',     data: dbCache.followers });
-        io.emit('db_updated', { type: 'notifications', data: dbCache.notifications });
-    });
-
-    // ── Toggle Like ───────────────────────────────────────────────────────────
-    socket.on('toggle_like', ({ postId, liked, user }) => {
-        const post = dbCache.posts.find(p => p.id == postId);
-        const trimmedUser = (user || '').trim();
+    socket.on('toggle_like', async ({ postId, liked, user }) => {
+        const post = await Post.findOne({ id: postId });
         if (post) {
-            if (!Array.isArray(post.likedBy)) post.likedBy = [];
             if (liked) {
-                if (!post.likedBy.some(u => u.trim() === trimmedUser)) post.likedBy.push(trimmedUser);
+                if (!post.likedBy.includes(user)) post.likedBy.push(user);
             } else {
-                post.likedBy = post.likedBy.filter(u => u.trim() !== trimmedUser);
+                post.likedBy = post.likedBy.filter(u => u !== user);
             }
             post.likes = post.likedBy.length;
-            writeDB();
-            io.emit('db_updated', { type: 'posts', data: dbCache.posts });
+            await post.save();
+            io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).lean() });
         }
     });
 
-    // ── Add Comment ───────────────────────────────────────────────────────────
-    socket.on('add_comment', ({ postId, comment }) => {
-        const post = dbCache.posts.find(p => p.id == postId);
+    socket.on('add_comment', async ({ postId, comment }) => {
+        const post = await Post.findOne({ id: postId });
         if (post) {
-            if (!post.comments) post.comments = [];
-            if (comment.user) comment.user = comment.user.trim();
             post.comments.push(comment);
-            writeDB();
-            io.emit('db_updated', { type: 'posts', data: dbCache.posts });
+            await post.save();
+            io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).lean() });
         }
     });
 
-    // ── Send Direct Message ───────────────────────────────────────────────────
-    socket.on('send_message', (msgData) => {
-        msgData.from = (msgData.from || '').trim();
-        msgData.to   = (msgData.to   || '').trim();
-        msgData.time = msgData.time || new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-        dbCache.messages.push(msgData);
-        writeDB();
-        console.log('New Message from', msgData.from, 'to', msgData.to);
-        // Broadcast to all (every client updates their local store)
-        io.emit('db_updated', { type: 'messages', data: dbCache.messages });
-
-        // ALSO direct ping to recipient if online (for instant chat refresh)
-        const recipientSocketId = onlineUsers[msgData.to];
-        if (recipientSocketId) {
-            io.to(recipientSocketId).emit('incoming_message', msgData);
-        }
+    socket.on('send_message', async (msgData) => {
+        await Message.create(msgData);
+        io.emit('db_updated', { type: 'messages', data: await Message.find().lean() });
+        if (onlineUsers[msgData.to]) io.to(onlineUsers[msgData.to]).emit('incoming_message', msgData);
     });
 
-    // ── Delete Operations ─────────────────────────────────────────────────────
-    socket.on('delete_post', (postId) => {
-        dbCache.posts = dbCache.posts.filter(p => p.id != postId);
-        writeDB();
-        io.emit('db_updated', { type: 'posts', data: dbCache.posts });
+    socket.on('delete_post', async (id) => {
+        await Post.deleteOne({ id });
+        io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).lean() });
     });
 
-    socket.on('delete_product', (prodId) => {
-        dbCache.prods = dbCache.prods.filter(p => p.id != prodId);
-        writeDB();
-        io.emit('db_updated', { type: 'prods', data: dbCache.prods });
+    socket.on('delete_product', async (id) => {
+        await Product.deleteOne({ id });
+        io.emit('db_updated', { type: 'prods', data: await Product.find().sort({ createdAt: -1 }).lean() });
     });
 
-    socket.on('delete_work_update', (updateId) => {
-        dbCache.work_updates = dbCache.work_updates.filter(u => u.id != updateId);
-        writeDB();
-        io.emit('db_updated', { type: 'work_updates', data: dbCache.work_updates });
+    socket.on('delete_work_update', async (id) => {
+        await WorkUpdate.deleteOne({ id });
+        io.emit('db_updated', { type: 'work_updates', data: await WorkUpdate.find().sort({ createdAt: -1 }).lean() });
     });
 
-    socket.on('delete_user', (userId) => {
-        dbCache.all_users = dbCache.all_users.filter(u => u.userId != userId);
-        writeDB();
-        io.emit('db_updated', { type: 'users', data: dbCache.all_users });
+    socket.on('delete_user', async (userId) => {
+        await User.deleteOne({ userId });
+        io.emit('db_updated', { type: 'users', data: await User.find().lean() });
     });
 
-    // ── Disconnect ────────────────────────────────────────────────────────────
-    socket.on('disconnect', (reason) => {
-        console.log('Disconnected:', socket.id, '| reason:', reason);
+    socket.on('disconnect', () => {
         const name = socket.data.userName;
         if (name && onlineUsers[name] === socket.id) {
             delete onlineUsers[name];
-            broadcastOnlineUsers();
+            io.emit('online_users', Object.keys(onlineUsers));
         }
     });
 });
 
-// ─── API Endpoint For Progress Uploads ──────────────────────────────
-app.post('/api/upload-post', (req, res) => {
-    console.log('--- Incoming Post Upload ---');
-    const post = req.body;
-    if (!post || !post.user) {
-        console.error('❌ Invalid post data received');
-        return res.status(400).send('Invalid post data');
-    }
-
-    const mediaSize = post.media ? (JSON.stringify(post.media).length / 1024 / 1024).toFixed(2) : 0;
-    console.log(`User: ${post.user} | Media Size: ${mediaSize} MB | Caption: ${post.caption ? post.caption.substring(0, 20) + '...' : 'None'}`);
-
-    dbCache.posts.unshift(post);
-    writeDB();
-    
-    // Notify all clients via socket that a new post was added
-    io.emit('db_updated', { type: 'posts', data: dbCache.posts });
-    
-    console.log('✅ Post uploaded and broadcasted successfully');
-    res.status(200).send('Post uploaded successfully');
-});
-
-// ─── Keep-alive self-ping for Render free tier (prevents 15-min sleep) ────────
-if (process.env.RENDER_EXTERNAL_URL) {
-    const https = require('https');
-    setInterval(() => {
-        const url = process.env.RENDER_EXTERNAL_URL.endsWith('/') 
-            ? process.env.RENDER_EXTERNAL_URL + 'ping' 
-            : process.env.RENDER_EXTERNAL_URL + '/ping';
-        https.get(url, (r) => {
-            console.log('Keep-alive ping:', r.statusCode);
-        }).on('error', (e) => { console.error('Ping error:', e.message); });
-    }, 10 * 60 * 1000); // every 10 minutes (more aggressive)
-}
+app.get('/ping', (req, res) => res.send('pong ' + new Date().toLocaleTimeString()));
+app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log('─────────────────────────────────────────────────');
-    console.log(`TNPVC Real-Time Server running on port ${PORT}`);
-    console.log(`Local: http://localhost:${PORT}/feed.html`);
-    console.log('─────────────────────────────────────────────────');
+    console.log(`🚀 TNPVC Server with MongoDB running on port ${PORT}`);
 });
