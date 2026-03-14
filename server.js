@@ -22,15 +22,15 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'db.json');
 
-// Enable CORS for all HTTP routes (not just socket)
 const corsHandler = cors({
     origin: "*",
     methods: ["GET", "POST"]
 });
 app.use(corsHandler);
 
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
+// Increased limits to 200MB to handle large base64 video data
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
 app.use(express.static(path.join(__dirname, '.')));
 
 // Ping route for diagnostic button

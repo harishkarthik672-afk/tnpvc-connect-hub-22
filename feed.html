@@ -3738,7 +3738,7 @@
             const notifs = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
             const myName = currentUser.name.trim();
 
-            const myNotifs = notifs.filter(n => (n.to || "").trim() === myName).sort((a, b) => b.id - a.id);
+            const myNotifs = notifs.filter(n => (n.to || "").trim() === myName && n.status === 'pending').sort((a, b) => b.id - a.id);
 
             if (myNotifs.length === 0) {
                 list.innerHTML = `
