@@ -1161,10 +1161,51 @@
             height: 100%;
             object-fit: cover;
         }
+
+        /* Upload Progress Overlay */
+        #uploadProgressOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 20000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+            color: white;
+            padding: 20px;
+        }
+        .progress-container {
+            width: 100%;
+            max-width: 300px;
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        #progressBar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 15px rgba(118, 75, 162, 0.5);
+        }
     </style>
 </head>
 
 <body>
+    <!-- Upload Progress Overlay -->
+    <div id="uploadProgressOverlay">
+        <div style="font-size: 1.5rem; font-weight: 800; margin-bottom: 5px;">Uploading Post...</div>
+        <div style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 20px;" id="uploadStatusText">Please wait, do not close the app</div>
+        <div class="progress-container">
+            <div id="progressBar"></div>
+        </div>
+        <div style="font-size: 2rem; font-weight: 900;" id="progressText">0%</div>
+    </div>
 
     <!-- Auth Gate -->
     <div id="authOverlay">
@@ -2949,19 +2990,12 @@
 
         function submitPost() {
             const text = document.getElementById('postText').value;
-            if (!text.trim()) {
-                alert("Please enter some text for your post.");
-                return;
-            }
+            if (!text.trim()) { alert("Please enter some text."); return; }
+            if (!currentUser) { alert("Session expired."); return; }
 
-            if (!currentUser || !currentUser.name) {
-                alert("User session not found. Please refresh or login again.");
-                return;
-            }
-
-            const post = {
+            const postData = {
                 id: Date.now(),
-                user: (currentUser.name || 'Unknown').trim(),
+                user: currentUser.name.trim(),
                 avatar: currentUser.avatar || 'logo.png',
                 media: selectedFiles.length > 0 ? [...selectedFiles] : null,
                 caption: text.trim(),
@@ -2970,23 +3004,67 @@
                 time: "JUST NOW"
             };
 
-            console.log("Submitting post:", post);
-
-            // Optimistic UI: Update local storage immediately for INSTANT response
-            const localPosts = JSON.parse(localStorage.getItem('tnpvc_local_posts') || '[]');
-            localPosts.unshift(post);
-            localStorage.setItem('tnpvc_local_posts', JSON.stringify(localPosts));
-            renderPosts();
-
-            if (socket && socket.connected) {
-                socket.emit('create_post', post);
-                console.log("Post emitted to socket");
-            }
+            // Show Progress UI
+            const overlay = document.getElementById('uploadProgressOverlay');
+            const bar = document.getElementById('progressBar');
+            const txt = document.getElementById('progressText');
+            const statusTxt = document.getElementById('uploadStatusText');
             
-            closeModals();
-            selectedFiles = [];
-            document.getElementById('postText').value = '';
-            // Scroll to top to see his own post if he just posted
+            overlay.style.display = 'flex';
+            bar.style.width = '0%';
+            txt.textContent = '0%';
+            statusTxt.textContent = 'Please wait, do not close the app';
+
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const isRender = window.location.hostname.includes('onrender.com');
+            const API_URL = window.DETECTED_BACKEND || (isLocal ? 'http://localhost:3000' : (isRender ? '' : 'https://tnpvc-backend.onrender.com'));
+            
+            const xhr = new XMLHttpRequest();
+            const targetUrl = API_URL.endsWith('/') ? API_URL + 'api/upload-post' : API_URL + '/api/upload-post';
+            xhr.open('POST', targetUrl, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    bar.style.width = percent + '%';
+                    txt.textContent = percent + '%';
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    bar.style.width = '100%';
+                    txt.textContent = '100%';
+                    statusTxt.textContent = 'Success! Post Live.';
+                    
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        closeModals();
+                        // Update local display
+                        const localPosts = JSON.parse(localStorage.getItem('tnpvc_local_posts') || '[]');
+                        localPosts.unshift(postData);
+                        localStorage.setItem('tnpvc_local_posts', JSON.stringify(localPosts));
+                        renderPosts();
+                        
+                        selectedFiles = [];
+                        document.getElementById('postText').value = '';
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        lucide.createIcons();
+                    }, 1000);
+                } else {
+                    alert('Upload failed. Server might be under load. Try again.');
+                    overlay.style.display = 'none';
+                }
+            };
+
+            xhr.onerror = () => {
+                alert('Connection error. Check your internet.');
+                overlay.style.display = 'none';
+            };
+
+            xhr.send(JSON.stringify(postData));
+        }
             window.scrollTo({ top: 0, behavior: 'smooth' });
             lucide.createIcons();
         }

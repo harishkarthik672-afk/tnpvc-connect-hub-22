@@ -273,6 +273,20 @@ io.on('connection', (socket) => {
     });
 });
 
+// ─── API Endpoint For Progress Uploads ──────────────────────────────
+app.post('/api/upload-post', (req, res) => {
+    const post = req.body;
+    if (!post || !post.user) return res.status(400).send('Invalid post data');
+
+    dbCache.posts.unshift(post);
+    writeDB();
+    
+    // Notify all clients via socket that a new post was added
+    io.emit('db_updated', { type: 'posts', data: dbCache.posts });
+    
+    res.status(200).send('Post uploaded successfully');
+});
+
 // ─── Keep-alive self-ping for Render free tier (prevents 15-min sleep) ────────
 if (process.env.RENDER_EXTERNAL_URL) {
     const https = require('https');
