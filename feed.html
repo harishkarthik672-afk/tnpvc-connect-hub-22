@@ -1236,7 +1236,7 @@
                     <i data-lucide="bell" size="24"></i>
                     <div id="notif-badge-top" class="notif-badge" style="display:none; position: absolute; top: -2px; right: -2px; height: 16px; min-width: 16px; font-size: 0.65rem; border: 2px solid white; z-index: 10; align-items: center; justify-content: center; background: #f3425f; color: white; border-radius: 50%; font-weight: bold;"></div>
                 </a>
-                <button onclick="alert('Socket Connected: ' + (socket && socket.connected ? 'YES ('+socket.id+')' : 'NO')); if(socket && !socket.connected) socket.connect();" 
+                <button onclick="alert('Socket Status: ' + (socket && socket.connected ? 'OK ✅' : 'NO ❌') + '\nError: ' + (socketError || 'None') + '\nURL: ' + (window.location.hostname)); if(socket && !socket.connected) socket.connect();" 
                     style="margin-left: 5px; width: 30px; height: 30px; border-radius: 50%; border: none; background: #eee; cursor: pointer; color: #666; font-size: 10px;">
                     ?
                 </button>
@@ -2117,27 +2117,32 @@
             setTimeout(() => toast.remove(), 4000);
         }
 
+        let socketError = null;
+
         function initSocket() {
             if (typeof io === 'undefined') {
-                alert('CRITICAL: Socket.IO Library NOT loaded! Check internet/CDN.');
-                console.warn('Socket.IO not loaded — running offline mode');
+                alert('CRITICAL: Socket.IO Library NOT loaded!');
                 return;
             }
-            console.log('Attemping connection to:', window.location.hostname);
 
-            // Connection strategy: Try current origin, if it fails or if we are on a custom domain, 
-            // the server URL should be the Render backend.
-            let BACKEND_URL = 'https://tnpvc-backend.onrender.com';
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                BACKEND_URL = 'http://localhost:3000';
-            }
+            // If we are literally on the render domain, use '/' to avoid CORS issues
+            // Otherwise use the explicit backend URL
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const isRender = window.location.hostname.includes('onrender.com');
+            const BACKEND_URL = isLocal ? 'http://localhost:3000' : (isRender ? '/' : 'https://tnpvc-backend.onrender.com');
+
+            console.log('Connecting to:', BACKEND_URL);
 
             socket = io(BACKEND_URL, {
                 transports: ['polling', 'websocket'],
                 reconnection: true,
-                reconnectionAttempts: 15,
-                reconnectionDelay: 1000,
-                timeout: 45000,
+                reconnectionAttempts: 20,
+                reconnectionDelay: 2000,
+            });
+
+            socket.on('connect_error', (err) => {
+                socketError = err.message;
+                console.error('Socket Connect Error:', err);
             });
 
             // ── Connection events ──────────────────────────────────────────────
