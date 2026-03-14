@@ -3048,10 +3048,9 @@
                         overlay.style.display = 'none';
                         closeModals();
                         // Update local display
-                        const localPosts = JSON.parse(localStorage.getItem('tnpvc_local_posts') || '[]');
-                        localPosts.unshift(postData);
-                        localStorage.setItem('tnpvc_local_posts', JSON.stringify(localPosts));
-                        renderPosts();
+                        overlay.style.display = 'none';
+                        closeModals();
+                        // Rely on socket broadcast for real-time sync instead of local unshift
                         
                         selectedFiles = [];
                         document.getElementById('postText').value = '';
@@ -3086,12 +3085,7 @@
                 contact,
                 media: selectedProductFiles.length > 0 ? [...selectedProductFiles] : null
             };
-            // Optimistic UI update
-            const localProds = JSON.parse(localStorage.getItem('tnpvc_local_prods') || '[]');
-            localProds.unshift(prod);
-            localStorage.setItem('tnpvc_local_prods', JSON.stringify(localProds));
             renderProducts();
-            renderPosts();
 
             if (socket && socket.connected) {
                 socket.emit('create_product', prod);
@@ -3146,7 +3140,10 @@
         function makeCarousel(mediaArr, postId) {
             if (!mediaArr || mediaArr.length === 0) return '';
 
-            const isVideo = (src) => src.startsWith('data:video/') || src.endsWith('.mp4') || src.endsWith('.mov') || src.endsWith('.webm');
+            const isVideo = (src) => {
+                const s = (src || "").toLowerCase();
+                return s.startsWith('data:video/') || s.endsWith('.mp4') || s.endsWith('.mov') || s.endsWith('.webm') || s.includes('video/mp4') || s.includes('video/webm');
+            };
 
             if (mediaArr.length === 1) {
                 const src = mediaArr[0];

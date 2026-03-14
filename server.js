@@ -61,6 +61,12 @@ try {
 // Debounced write to avoid too many disk writes
 let writeTimer = null;
 const writeDB = () => {
+    // Safety check: Don't overwrite with empty core data if it looks like a crash or reset
+    if (dbCache.all_users.length === 0 && dbCache.posts.length === 0 && dbCache.messages.length === 0) {
+        console.warn('⚠️ writeDB skipped: dbCache looks dangerously empty.');
+        return;
+    }
+
     clearTimeout(writeTimer);
     writeTimer = setTimeout(() => {
         try {
@@ -68,7 +74,7 @@ const writeDB = () => {
         } catch(e) {
             console.error('DB write error:', e.message);
         }
-    }, 300);
+    }, 500);
 };
 
 // ─── Track online users: name → socket.id ────────────────────────────────────
@@ -143,7 +149,7 @@ io.on('connection', (socket) => {
         dbCache.notifications.unshift(notifData);
         writeDB();
 
-        // Broadcast to everyone (all clients update their notification store)
+        // Broadcast updated notifications to all
         io.emit('db_updated', { type: 'notifications', data: dbCache.notifications });
 
         // ALSO send a targeted "ping" to the recipient if they're online
@@ -167,6 +173,7 @@ io.on('connection', (socket) => {
         writeDB();
         io.emit('db_updated', { type: 'notifications', data: dbCache.notifications });
         io.emit('db_updated', { type: 'followers',     data: dbCache.followers });
+        io.emit('db_updated', { type: 'users',         data: dbCache.all_users });
     });
 
     // ── Decline / Cancel Follow ───────────────────────────────────────────────
