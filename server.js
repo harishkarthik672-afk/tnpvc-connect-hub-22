@@ -5,6 +5,8 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 
+const bodyParser = require('body-parser');
+
 const app = express();
 const server = http.createServer(app);
 
@@ -16,15 +18,24 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'db.json');
 
-app.use(cors());
-app.use(express.static(__dirname));
+// Enable CORS for all HTTP routes (not just socket)
+const corsHandler = cors({
+    origin: "*",
+    methods: ["GET", "POST"]
+});
+app.use(corsHandler);
+
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, '.')));
+
+// Ping route for diagnostic button
+app.get('/ping', (req, res) => {
+    res.send('pong ' + new Date().toLocaleTimeString());
+});
 
 app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
-
-// Health check endpoint (keeps Render free tier alive)
-app.get('/ping', (req, res) => res.send('pong'));
 
 // ─── In-memory DB ─────────────────────────────────────────────────────────────
 let dbCache = {
