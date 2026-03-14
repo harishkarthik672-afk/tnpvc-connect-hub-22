@@ -2119,15 +2119,18 @@
 
         function initSocket() {
             if (typeof io === 'undefined') {
+                alert('CRITICAL: Socket.IO Library NOT loaded! Check internet/CDN.');
                 console.warn('Socket.IO not loaded — running offline mode');
                 return;
             }
+            console.log('Attemping connection to:', window.location.hostname);
 
             // Connection strategy: Try current origin, if it fails or if we are on a custom domain, 
             // the server URL should be the Render backend.
-            const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-                ? 'http://localhost:3000' 
-                : 'https://tnpvc-backend.onrender.com';
+            let BACKEND_URL = 'https://tnpvc-backend.onrender.com';
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                BACKEND_URL = 'http://localhost:3000';
+            }
 
             socket = io(BACKEND_URL, {
                 transports: ['polling', 'websocket'],
