@@ -297,7 +297,7 @@
                 <div class="live-badge">
                     <span class="live-dot"></span> LIVE
                 </div>
-                <button class="logout-btn" onclick="location.reload()">
+                <button class="logout-btn" onclick="handleLogout()">
                     Logout
                 </button>
             </div>
@@ -429,14 +429,29 @@
         let db = { users: [], posts: [], prods: [], updates: [], messages: [], followers: {} };
         let currentPanel = 'users';
 
+        // Check for existing session on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedId = localStorage.getItem('tnpvc_admin_id');
+            const savedPass = localStorage.getItem('tnpvc_admin_pass');
+            if (savedId === ADMIN_ID && savedPass === ADMIN_PASS) {
+                autoLogin();
+            }
+        });
+
+        function autoLogin() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardMain').style.display = 'block';
+            document.body.style.alignItems = 'flex-start';
+            initDashboard();
+        }
+
         function handleLogin() {
             const id = document.getElementById('adminId').value.trim();
             const pass = document.getElementById('adminPass').value.trim();
             if (id === ADMIN_ID && pass === ADMIN_PASS) {
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('dashboardMain').style.display = 'block';
-                document.body.style.alignItems = 'flex-start';
-                initDashboard();
+                localStorage.setItem('tnpvc_admin_id', id);
+                localStorage.setItem('tnpvc_admin_pass', pass);
+                autoLogin();
             } else {
                 document.getElementById('adminId').style.borderColor = '#ef4444';
                 document.getElementById('adminPass').style.borderColor = '#ef4444';
@@ -445,6 +460,12 @@
                     document.getElementById('adminPass').style.borderColor = '';
                 }, 1500);
             }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('tnpvc_admin_id');
+            localStorage.removeItem('tnpvc_admin_pass');
+            location.reload();
         }
 
         function initDashboard() {
