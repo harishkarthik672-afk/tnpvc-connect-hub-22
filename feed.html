@@ -2160,6 +2160,10 @@
             const isRender = window.location.hostname.includes('onrender.com');
             const BACKEND_URL = isLocal ? 'http://localhost:3000' : (isRender ? '/' : 'https://tnpvc-backend.onrender.com');
 
+            // --- AUTO WAKEUP ---
+            // Wake the server as soon as the page loads
+            fetch(BACKEND_URL + 'ping').catch(() => {});
+
             console.log('Connecting to:', BACKEND_URL);
 
             socket = io(BACKEND_URL, {

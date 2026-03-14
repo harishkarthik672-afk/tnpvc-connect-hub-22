@@ -121,8 +121,6 @@ io.on('connection', (socket) => {
         dbCache.work_updates.unshift(updateData);
         writeDB();
         io.emit('db_updated', { type: 'work_updates', data: dbCache.work_updates });
-    });
-
     // ── Send Notification / Follow Request ────────────────────────────────────
     socket.on('send_notification', (notifData) => {
         const from = (notifData.from || '').trim();
@@ -273,10 +271,13 @@ io.on('connection', (socket) => {
 if (process.env.RENDER_EXTERNAL_URL) {
     const https = require('https');
     setInterval(() => {
-        https.get(process.env.RENDER_EXTERNAL_URL + '/ping', (r) => {
+        const url = process.env.RENDER_EXTERNAL_URL.endsWith('/') 
+            ? process.env.RENDER_EXTERNAL_URL + 'ping' 
+            : process.env.RENDER_EXTERNAL_URL + '/ping';
+        https.get(url, (r) => {
             console.log('Keep-alive ping:', r.statusCode);
-        }).on('error', () => {});
-    }, 13 * 60 * 1000); // every 13 minutes
+        }).on('error', (e) => { console.error('Ping error:', e.message); });
+    }, 10 * 60 * 1000); // every 10 minutes (more aggressive)
 }
 
 server.listen(PORT, '0.0.0.0', () => {
