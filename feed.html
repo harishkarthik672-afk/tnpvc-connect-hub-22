@@ -2566,6 +2566,10 @@
             if (!currentUser) return;
             const myName = (currentUser.name || '').trim();
             if (document.getElementById('headerPostAvatar')) document.getElementById('headerPostAvatar').src = currentUser.avatar;
+            const allPosts = JSON.parse(localStorage.getItem('tnpvc_local_posts') || '[]');
+            const allProds = JSON.parse(localStorage.getItem('tnpvc_local_products') || '[]');
+            const myPosts = allPosts.filter(p => (p.user || '').trim() === myName);
+            const myProds = allProds.filter(p => (p.user || '').trim() === myName);
             if (document.getElementById('accountAvatar')) document.getElementById('accountAvatar').src = currentUser.avatar;
 
             // Header Name
@@ -3778,14 +3782,18 @@
                 let followers = JSON.parse(localStorage.getItem('tnpvc_followers') || '{}');
                 const target = currentUser.name.trim();
                 const from = followerName.trim();
+                
+                // Key logic: Ensure the key is trimmed
                 if (!followers[target]) followers[target] = [];
-                if (!followers[target].includes(from)) {
+                if (!followers[target].some(f => f.trim() === from)) {
                     followers[target].push(from);
                 }
                 localStorage.setItem('tnpvc_followers', JSON.stringify(followers));
 
                 renderNotifications();
                 applyUserUI();
+                renderAccountGrid();
+                renderSearch();
             }
         }
 
