@@ -3782,24 +3782,16 @@
 
 
         function acceptFollow(notifId, followerName) {
-            // OPTIMISTIC UI: Update local state immediately so it shows 'Accepted' right away
+            if (!currentUser || !currentUser.name) return;
+            const myName = currentUser.name.trim();
+            const fromName = (followerName || "").trim();
+
+            // 1. Update Notifications locally for instant feedback
             let notifs = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
             let targetNotif = notifs.find(n => n.id == notifId);
             if (targetNotif) {
                 targetNotif.status = 'accepted';
                 localStorage.setItem('tnpvc_notifications', JSON.stringify(notifs));
-                renderNotifications(); // Refresh the list immediately
-            }
-
-            if (socket) {
-                socket.emit('accept_follow', { notifId, from: followerName.trim(), to: currentUser.name.trim() });
-            } else {
-                let followers = JSON.parse(localStorage.getItem('tnpvc_followers') || '{}');
-                const target = currentUser.name.trim();
-                const from = followerName.trim();
-                
-                // Key logic: Ensure the key is trimmed
-                if (!followers[target]) followers[target] = [];
                 if (!followers[target].some(f => f.trim() === from)) {
                     followers[target].push(from);
                 }
