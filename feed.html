@@ -2134,8 +2134,9 @@
             console.log('Connecting to:', BACKEND_URL);
 
             socket = io(BACKEND_URL, {
+                transports: ['websocket'], // Force websocket ONLY
                 reconnection: true,
-                reconnectionAttempts: 20,
+                reconnectionAttempts: 25,
                 reconnectionDelay: 2000,
                 withCredentials: true
             });
