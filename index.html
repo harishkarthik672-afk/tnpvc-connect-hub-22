@@ -455,27 +455,50 @@
         .popup-feed-carousel {
             position: relative;
             width: 100%;
-            border-radius: 10px;
+            height: 340px; /* Fixed height to prevent vertical stacking */
+            border-radius: 14px;
             overflow: hidden;
             background: #f1f5f9;
         }
 
         .popup-feed-slide {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            height: 260px;
-            /* Fixed height matching the user's marked boundary */
-            display: none;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease-in-out;
+            background: #fff;
         }
 
         .popup-feed-slide.active {
-            display: block;
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .popup-feed-slide img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            display: block;
+        }
+
+        .popup-feed-caption {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            color: white;
+            padding: 25px 15px 15px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            line-height: 1.35;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+            pointer-events: none; /* Let clicks pass through if needed */
         }
 
         .popup-feed-slide .empty-slide {
@@ -1692,24 +1715,24 @@
                 const localPosts = JSON.parse(localStorage.getItem('tnpvc_local_posts') || '[]');
                 const feedContainer = document.getElementById('popupFeedItems');
                 const dotsContainer = document.getElementById('feedNavDots');
-
                 if (localPosts.length > 0) {
-                    const recentPosts = localPosts.slice(0, 6);
+                    const recentPosts = localPosts.slice(0, 10); // Show up to 10 recent
                     feedContainer.innerHTML = recentPosts.map((post, i) => {
-                        // Handle both array and string media
                         let mediaSrc = null;
                         if (post.media) {
                             mediaSrc = Array.isArray(post.media) ? post.media[0] : post.media;
                         }
-                        return `<div class="popup-feed-slide ${i === 0 ? 'active' : ''}" style="background:#fff; display:flex; flex-direction:column;">
+                        return `
+                        <div class="popup-feed-slide ${i === 0 ? 'active' : ''}">
                             ${mediaSrc
-                                ? `<img src="${mediaSrc}" alt="Feed" loading="lazy" style="flex:1; object-fit:cover;">`
-                                : `<div class="empty-slide" style="flex:1; display:flex; align-items:center; justify-content:center; padding:20px; text-align:center; font-weight:700; color:#1b0f3a; font-size:1.1rem; background:#f8fafc; line-height:1.5;">${post.caption || 'New Community Update'}</div>`}
-                            ${mediaSrc && post.caption ? `<div style="padding:10px 15px; font-size:0.85rem; color:#333; border-top:1px solid #eee; background:#fff; font-weight:500;">${post.caption}</div>` : ''}
+                                ? `<img src="${mediaSrc}" alt="Update">`
+                                : `<div style="flex:1; display:flex; align-items:center; justify-content:center; padding:30px; text-align:center; font-weight:800; color:#1b0f3a; font-size:1.2rem; background:#f8fafc;">${post.caption || 'New Community Update'}</div>`}
+                            ${post.caption ? `<div class="popup-feed-caption">${post.caption}</div>` : ''}
                         </div>`;
                     }).join('');
+
                     dotsContainer.innerHTML = recentPosts.map((_, i) =>
-                        `<div class="feed-dot ${i === 0 ? 'active' : ''}" data-idx="${i}"></div>`
+                        `<div class="feed-dot ${i === 0 ? 'active' : ''}" onclick="popupCarouselGoTo(${i})"></div>`
                     ).join('');
                 } else {
                     // Placeholder slides when no posts exist yet
