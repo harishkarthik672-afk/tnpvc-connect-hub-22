@@ -157,7 +157,7 @@ io.on('connection', (socket) => {
     socket.on('accept_follow', ({ notifId, from, to }) => {
         const trimmedFrom = (from || '').trim();
         const trimmedTo   = (to   || '').trim();
-        const notif = dbCache.notifications.find(n => n.id === notifId);
+        const notif = dbCache.notifications.find(n => n.id == notifId);
         if (notif) notif.status = 'accepted';
 
         if (!dbCache.followers[trimmedTo]) dbCache.followers[trimmedTo] = [];
@@ -171,7 +171,7 @@ io.on('connection', (socket) => {
 
     // ── Decline / Cancel Follow ───────────────────────────────────────────────
     socket.on('remove_notification', (notifId) => {
-        dbCache.notifications = dbCache.notifications.filter(n => n.id !== notifId);
+        dbCache.notifications = dbCache.notifications.filter(n => n.id != notifId);
         writeDB();
         io.emit('db_updated', { type: 'notifications', data: dbCache.notifications });
     });
