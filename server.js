@@ -242,108 +242,158 @@ io.on('connection', async (socket) => {
 
     socket.on('sync_user', async (userData) => {
         const name = (userData.name || '').trim();
-        if (!name) return;
-        await User.findOneAndUpdate({ name }, userData, { upsert: true });
-        io.emit('db_updated', { type: 'users', data: await User.find().lean() });
+        if (!name || !isDbConnected) return;
+        try {
+            await User.findOneAndUpdate({ name }, userData, { upsert: true });
+            io.emit('db_updated', { type: 'users', data: await User.find().lean() });
+        } catch (err) { console.error('Sync user error:', err); }
     });
 
     socket.on('create_post', async (postData) => {
-        await Post.create(postData);
-        io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).limit(100).lean() });
+        if (isDbConnected) {
+            try {
+                await Post.create(postData);
+                const allPosts = await Post.find().sort({ createdAt: -1 }).limit(100).lean();
+                io.emit('db_updated', { type: 'posts', data: allPosts });
+            } catch (err) { console.error('Create post error:', err); }
+        } else {
+            console.log('📝 Local post broadcast (DB offline)');
+            io.emit('db_updated', { type: 'posts', data: [postData] });
+        }
     });
 
     socket.on('create_product', async (prodData) => {
-        await Product.create(prodData);
-        io.emit('db_updated', { type: 'prods', data: await Product.find().sort({ createdAt: -1 }).limit(100).lean() });
+        if (isDbConnected) {
+            try {
+                await Product.create(prodData);
+                io.emit('db_updated', { type: 'prods', data: await Product.find().sort({ createdAt: -1 }).limit(100).lean() });
+            } catch (err) { console.error('Create product error:', err); }
+        }
     });
 
     socket.on('create_work_update', async (updateData) => {
-        await WorkUpdate.create(updateData);
-        io.emit('db_updated', { type: 'work_updates', data: await WorkUpdate.find().sort({ createdAt: -1 }).limit(100).lean() });
+        if (isDbConnected) {
+            try {
+                await WorkUpdate.create(updateData);
+                io.emit('db_updated', { type: 'work_updates', data: await WorkUpdate.find().sort({ createdAt: -1 }).limit(100).lean() });
+            } catch (err) { console.error('Work update error:', err); }
+        }
     });
 
     socket.on('send_notification', async (notifData) => {
         const from = (notifData.from || '').trim();
         const to = (notifData.to || '').trim();
         if (!from || !to) return;
-        await Notification.deleteMany({ from, to, type: 'follow_request' });
-        await Notification.create(notifData);
-        io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).limit(50).lean() });
+        if (isDbConnected) {
+            try {
+                await Notification.deleteMany({ from, to, type: 'follow_request' });
+                await Notification.create({ ...notifData, from, to });
+                io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).limit(50).lean() });
+            } catch (err) { console.error('Send notification error:', err); }
+        }
         if (onlineUsers[to]) io.to(onlineUsers[to]).emit('new_notification', notifData);
     });
 
     socket.on('accept_follow', async ({ notifId, from, to }) => {
-        await Notification.findOneAndUpdate({ id: notifId }, { status: 'accepted' });
-        await Follower.findOneAndUpdate(
-            { targetUser: to },
-            { $addToSet: { followersList: from.trim() } },
-            { upsert: true }
-        );
-        
-        io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).limit(50).lean() });
-        const followersRaw = await Follower.find().lean();
-        const followers = {};
-        followersRaw.forEach(f => { followers[f.targetUser] = f.followersList; });
-        io.emit('db_updated', { type: 'followers', data: followers });
+        if (!isDbConnected) return;
+        try {
+            await Notification.findOneAndUpdate({ id: notifId }, { status: 'accepted' });
+            await Follower.findOneAndUpdate(
+                { targetUser: to },
+                { $addToSet: { followersList: from.trim() } },
+                { upsert: true }
+            );
+            
+            io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).limit(50).lean() });
+            const followersRaw = await Follower.find().lean();
+            const followers = {};
+            followersRaw.forEach(f => { followers[f.targetUser] = f.followersList; });
+            io.emit('db_updated', { type: 'followers', data: followers });
+        } catch (err) { console.error('Accept follow error:', err); }
     });
 
     socket.on('remove_notification', async (notifId) => {
-        await Notification.deleteOne({ id: notifId });
-        io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).limit(50).lean() });
+        if (isDbConnected) {
+            try {
+                await Notification.deleteOne({ id: notifId });
+                io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).limit(50).lean() });
+            } catch (err) { console.error('Remove notification error:', err); }
+        }
     });
 
     socket.on('unfollow', async ({ target, me }) => {
-        await Follower.findOneAndUpdate(
-            { targetUser: target },
-            { $pull: { followersList: me.trim() } }
-        );
-        await Notification.deleteMany({ from: me, to: target, type: 'follow_request' });
-        
-        const followersRaw = await Follower.find().lean();
-        const followers = {};
-        followersRaw.forEach(f => { followers[f.targetUser] = f.followersList; });
-        io.emit('db_updated', { type: 'followers', data: followers });
-        io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).limit(50).lean() });
+        if (!isDbConnected) return;
+        try {
+            await Follower.findOneAndUpdate(
+                { targetUser: target },
+                { $pull: { followersList: me.trim() } }
+            );
+            await Notification.deleteMany({ from: me, to: target, type: 'follow_request' });
+            
+            const followersRaw = await Follower.find().lean();
+            const followers = {};
+            followersRaw.forEach(f => { followers[f.targetUser] = f.followersList; });
+            io.emit('db_updated', { type: 'followers', data: followers });
+            io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).limit(50).lean() });
+        } catch (err) { console.error('Unfollow error:', err); }
     });
 
     socket.on('toggle_like', async ({ postId, liked, user }) => {
-        const post = await Post.findOne({ id: postId });
-        if (post) {
-            const u = user.trim();
-            if (liked) {
-                if (!post.likedBy.includes(u)) post.likedBy.push(u);
-            } else {
-                post.likedBy = post.likedBy.filter(name => name !== u);
+        if (!isDbConnected) return;
+        try {
+            const post = await Post.findOne({ id: postId });
+            if (post) {
+                const u = user.trim();
+                if (liked) {
+                    if (!post.likedBy.includes(u)) post.likedBy.push(u);
+                } else {
+                    post.likedBy = post.likedBy.filter(name => name !== u);
+                }
+                post.likes = post.likedBy.length;
+                await post.save();
+                io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).limit(100).lean() });
             }
-            post.likes = post.likedBy.length;
-            await post.save();
-            io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).limit(100).lean() });
-        }
+        } catch (err) { console.error('Toggle like error:', err); }
     });
 
     socket.on('add_comment', async ({ postId, comment }) => {
-        const post = await Post.findOne({ id: postId });
-        if (post) {
-            post.comments.push(comment);
-            await post.save();
-            io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).limit(100).lean() });
-        }
+        if (!isDbConnected) return;
+        try {
+            const post = await Post.findOne({ id: postId });
+            if (post) {
+                post.comments.push(comment);
+                await post.save();
+                io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).limit(100).lean() });
+            }
+        } catch (err) { console.error('Add comment error:', err); }
     });
 
     socket.on('send_message', async (msgData) => {
-        await Message.create(msgData);
-        io.emit('db_updated', { type: 'messages', data: await Message.find().sort({ createdAt: -1 }).limit(200).lean() });
-        if (onlineUsers[msgData.to]) io.to(onlineUsers[msgData.to]).emit('incoming_message', msgData);
+        if (isDbConnected) {
+            try {
+                await Message.create(msgData);
+                io.emit('db_updated', { type: 'messages', data: await Message.find().sort({ createdAt: -1 }).limit(200).lean() });
+                if (onlineUsers[msgData.to]) io.to(onlineUsers[msgData.to]).emit('incoming_message', msgData);
+            } catch (err) { console.error('Send message error:', err); }
+        }
     });
 
     socket.on('delete_post', async (id) => {
-        await Post.deleteOne({ id });
-        io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).limit(100).lean() });
+        if (isDbConnected) {
+            try {
+                await Post.deleteOne({ id });
+                io.emit('db_updated', { type: 'posts', data: await Post.find().sort({ createdAt: -1 }).limit(100).lean() });
+            } catch (err) { console.error('Delete post error:', err); }
+        }
     });
 
     socket.on('delete_product', async (id) => {
-        await Product.deleteOne({ id });
-        io.emit('db_updated', { type: 'prods', data: await Product.find().sort({ createdAt: -1 }).limit(100).lean() });
+        if (isDbConnected) {
+            try {
+                await Product.deleteOne({ id });
+                io.emit('db_updated', { type: 'prods', data: await Product.find().sort({ createdAt: -1 }).limit(100).lean() });
+            } catch (err) { console.error('Delete product error:', err); }
+        }
     });
 
     socket.on('delete_user', async (userId) => {
@@ -362,6 +412,46 @@ io.on('connection', async (socket) => {
 
 app.get('/ping', (req, res) => res.json({ status: 'ok', db: isDbConnected, time: new Date() }));
 app.get('/dashboard-page', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')));
+
+// ─── REST Endpoints for Uploads ─────────────────────────────────────────────
+app.post('/api/upload-post', async (req, res) => {
+    try {
+        const postData = req.body;
+        if (isDbConnected) {
+            await Post.create(postData);
+            const allPosts = await Post.find().sort({ createdAt: -1 }).limit(100).lean();
+            io.emit('db_updated', { type: 'posts', data: allPosts });
+        } else {
+            // Fallback: update db.json locally
+            if (fs.existsSync(DB_PATH)) {
+                let data = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+                data.posts = data.posts || [];
+                data.posts.unshift(postData);
+                fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+            }
+            io.emit('db_updated', { type: 'posts', data: [postData] });
+        }
+        res.status(200).json({ status: 'success' });
+    } catch (err) {
+        console.error('REST Upload Error:', err);
+        res.status(500).send(err.message);
+    }
+});
+
+app.post('/api/sync-user', async (req, res) => {
+    try {
+        const userData = req.body;
+        const name = (userData.name || '').trim();
+        if (!name) return res.status(400).send('Name required');
+        if (isDbConnected) {
+            await User.findOneAndUpdate({ name }, userData, { upsert: true });
+            io.emit('db_updated', { type: 'users', data: await User.find().lean() });
+        }
+        res.status(200).json({ status: 'success' });
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 TNPVC Node Server started on port ${PORT}`);
