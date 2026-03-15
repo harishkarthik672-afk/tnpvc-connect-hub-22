@@ -42,8 +42,10 @@ const MONGO_URI_LEGACY = "mongodb://harishkarthik672_db_user:m2lvRLHv0wV7yFev@tn
 
 let isDbConnected = false;
 let dbError = null;
+let connectStartTime = null;
 
 async function connectToDb() {
+    connectStartTime = new Date();
     console.log('⏳ Connecting to MongoDB Atlas...');
     const options = {
         connectTimeoutMS: 20000,
@@ -450,6 +452,7 @@ app.get('/ping', (req, res) => {
         db: isDbConnected, 
         error: dbError,
         mongoose: mongoose.connection.readyState,
+        startTime: connectStartTime,
         time: new Date() 
     });
 });
