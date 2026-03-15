@@ -19,7 +19,7 @@ const server = http.createServer(app);
 
 // ─── Socket.IO config ───────────────────────────────────────────────────────
 const io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] },
+    cors: { origin: ["https://www.tnpvc.co.in", "http://localhost:3000", "http://127.0.0.1:3000"], methods: ["GET", "POST"], credentials: true },
     maxHttpBufferSize: 5e8,
     pingTimeout: 60000,
     pingInterval: 25000
@@ -28,12 +28,11 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'db.json');
 
-app.use(cors({ origin: "*", methods: ["GET", "POST"] }));
+app.use(cors({ origin: ["https://www.tnpvc.co.in", "http://localhost:3000", "http://127.0.0.1:3000"], methods: ["GET", "POST"], credentials: true }));
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use(express.static(path.join(__dirname, '.')));
 
-// ─── MongoDB Connection ──────────────────────────────────────────────────────
 // ─── MongoDB Connection ──────────────────────────────────────────────────────
 const MONGO_URI_SRV = "mongodb+srv://harishkarthik672_db_user:m2lvRLHv0wV7yFev@tnpvcofficialwebsite.ikz3lb3.mongodb.net/tnpvc_db?retryWrites=true&w=majority&appName=tnpvcofficialwebsite";
 const MONGO_URI_LEGACY = "mongodb://harishkarthik672_db_user:m2lvRLHv0wV7yFev@tnpvcofficialwebsite-shard-00-00.ikz3lb3.mongodb.net:27017,tnpvcofficialwebsite-shard-00-01.ikz3lb3.mongodb.net:27017,tnpvcofficialwebsite-shard-00-02.ikz3lb3.mongodb.net:27017/tnpvc_db?ssl=true&replicaSet=atlas-pptvow-shard-0&authSource=admin&retryWrites=true&w=majority";
