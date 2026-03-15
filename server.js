@@ -5,6 +5,14 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
+const dns = require('dns');
+
+// Force using Google DNS for resolve issues with MongoDB SRV records
+try {
+    dns.setServers(['8.8.8.8', '8.8.4.4']);
+} catch (e) {
+    console.warn('⚠️ Could not set custom DNS servers:', e.message);
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -26,22 +34,42 @@ app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use(express.static(path.join(__dirname, '.')));
 
 // ─── MongoDB Connection ──────────────────────────────────────────────────────
-const MONGO_URI = "mongodb+srv://harishkarthik672_db_user:m2lvRLHv0wV7yFev@tnpvcofficialwebsite.ikz3lb3.mongodb.net/tnpvc_db?retryWrites=true&w=majority&appName=tnpvcofficialwebsite";
+// ─── MongoDB Connection ──────────────────────────────────────────────────────
+const MONGO_URI_SRV = "mongodb+srv://harishkarthik672_db_user:m2lvRLHv0wV7yFev@tnpvcofficialwebsite.ikz3lb3.mongodb.net/tnpvc_db?retryWrites=true&w=majority&appName=tnpvcofficialwebsite";
+const MONGO_URI_LEGACY = "mongodb://harishkarthik672_db_user:m2lvRLHv0wV7yFev@tnpvcofficialwebsite-shard-00-00.ikz3lb3.mongodb.net:27017,tnpvcofficialwebsite-shard-00-01.ikz3lb3.mongodb.net:27017,tnpvcofficialwebsite-shard-00-02.ikz3lb3.mongodb.net:27017/tnpvc_db?ssl=true&replicaSet=atlas-pptvow-shard-0&authSource=admin&retryWrites=true&w=majority";
 
 let isDbConnected = false;
 
-mongoose.connect(MONGO_URI, {
-    connectTimeoutMS: 30000,
-    socketTimeoutMS: 45000,
-})
-.then(() => {
-    console.log('✅ MongoDB Atlas Connected Successfully');
-    isDbConnected = true;
-    migrateIfNeeded();
-})
-.catch(err => {
-    console.error('❌ MongoDB Connection Error:', err.message);
-});
+async function connectToDb() {
+    console.log('⏳ Connecting to MongoDB Atlas...');
+    const options = {
+        connectTimeoutMS: 60000,
+        socketTimeoutMS: 60000,
+        serverSelectionTimeoutMS: 60000,
+    };
+
+    try {
+        await mongoose.connect(MONGO_URI_SRV, options);
+        console.log('✅ MongoDB Atlas Connected Successfully (SRV)');
+        isDbConnected = true;
+        migrateIfNeeded();
+    } catch (err) {
+        console.warn('⚠️ SRV Connection failed, trying legacy format...', err.message);
+        try {
+            await mongoose.connect(MONGO_URI_LEGACY, options);
+            console.log('✅ MongoDB Atlas Connected Successfully (Legacy)');
+            isDbConnected = true;
+            migrateIfNeeded();
+        } catch (err2) {
+            console.error('❌ MongoDB Connection Error:', err2.message);
+            if (err2.message.includes('ECONNREFUSED')) {
+                console.error('👉 Tip: Check your DNS settings or MongoDB Atlas IP Whitelist.');
+            }
+        }
+    }
+}
+
+connectToDb();
 
 // ─── Schemas & Models ────────────────────────────────────────────────────────
 const userSchema = new mongoose.Schema({
@@ -152,6 +180,27 @@ async function migrateIfNeeded() {
 
 // ─── Utility to fetch full state ─────────────────────────────────────────────
 async function getFullState() {
+    if (!isDbConnected) {
+        console.warn('⚠️ DB not connected, attempting to serve from db.json fallback...');
+        if (fs.existsSync(DB_PATH)) {
+            try {
+                const data = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+                return {
+                    all_users: data.all_users || [],
+                    posts: data.posts || [],
+                    notifications: data.notifications || [],
+                    messages: data.messages || [],
+                    work_updates: data.work_updates || [],
+                    prods: data.prods || [],
+                    followers: data.followers || {}
+                };
+            } catch (err) {
+                console.error('❌ Error reading db.json fallback:', err.message);
+            }
+        }
+        return { all_users: [], posts: [], notifications: [], messages: [], work_updates: [], prods: [], followers: {} };
+    }
+
     try {
         const [all_users, posts, notifications, messages, work_updates, prods, followersRaw] = await Promise.all([
             User.find().lean(),
