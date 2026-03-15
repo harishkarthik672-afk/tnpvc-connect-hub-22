@@ -1193,6 +1193,91 @@
             transition: width 0.3s ease;
             box-shadow: 0 0 15px rgba(118, 75, 162, 0.5);
         }
+        /* WhatsApp Style Chat Visuals */
+        .chat-modal {
+            background-color: #e5ddd5;
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            background-repeat: repeat;
+            position: fixed;
+            inset: 0;
+            z-index: 5000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .chat-bubble {
+            position: relative;
+            padding: 6px 10px 8px;
+            max-width: 85%;
+            font-size: 0.95rem;
+            line-height: 1.45;
+            word-wrap: break-word;
+            margin-bottom: 2px;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+            white-space: pre-wrap;
+            border-radius: 8px;
+        }
+
+        .chat-message-new {
+            animation: messageSlideUp 0.3s cubic-bezier(0.1, 0.5, 0.1, 1);
+        }
+
+        @keyframes messageSlideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .chat-bubble.sent {
+            background: #dcf8c6;
+            align-self: flex-end;
+            margin-right: 12px;
+        }
+
+        .chat-bubble.received {
+            background: #ffffff;
+            align-self: flex-start;
+            margin-left: 12px;
+        }
+
+        /* Triangular tails on the FIRST message of a group */
+        .chat-bubble.sent.tail::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: -10px;
+            width: 0;
+            height: 0;
+            border-top: 10px solid #dcf8c6;
+            border-right: 10px solid transparent;
+        }
+
+        .chat-bubble.received.tail::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -10px;
+            width: 0;
+            height: 0;
+            border-top: 10px solid #ffffff;
+            border-left: 10px solid transparent;
+        }
+
+        .chat-time {
+            font-size: 0.65rem;
+            color: rgba(0,0,0,0.4);
+            float: right;
+            margin: 4px 0 -2px 8px;
+        }
+
+        .chat-history-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            scroll-behavior: smooth;
+        }
     </style>
 </head>
 
@@ -1826,78 +1911,77 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 10px 14px;
-            background: #ffffff;
-            border-bottom: 1px solid #e4e6eb;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+            padding: 8px 12px;
+            background: #075e54;
+            color: white;
             flex-shrink: 0;
             position: sticky;
             top: 0;
             z-index: 10;
         ">
-            <!-- ← BACK ARROW BUTTON (Left Corner) -->
+            <!-- ← BACK ARROW BUTTON -->
             <button id="chatBackBtn" onclick="closeChatModal()" title="Back" style="
-                    background: #f0f2f5;
+                    background: none;
                     border: none;
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 50%;
                     display: flex;
                     align-items: center;
-                    justify-content: center;
                     cursor: pointer;
-                    color: #1877f2;
-                    flex-shrink: 0;
-                    transition: background 0.15s;
-                " onmouseover="this.style.background='#d8e4fc';" onmouseout="this.style.background='#f0f2f5';">
-                <i data-lucide="arrow-left" size="20" style="stroke-width: 2.5px;"></i>
+                    color: white;
+                    padding: 0;
+                ">
+                <i data-lucide="arrow-left" size="24"></i>
             </button>
 
             <!-- Chat Partner Profile Image -->
-            <div style="position:relative; flex-shrink:0;">
+            <div style="position:relative; flex-shrink:0;" onclick="viewUserProfile(document.getElementById('chatTargetName').innerText)">
                 <img id="chatTargetAvatar" src=""
-                    style="width:42px; height:42px; border-radius:50%; object-fit:cover; border:2px solid #e4e6eb;">
-                <!-- Green online dot -->
-                <span
-                    style="position:absolute; bottom:1px; right:1px; width:11px; height:11px; background:#4caf50; border-radius:50%; border:2px solid #fff;"></span>
+                    style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:1px solid rgba(255,255,255,0.2);">
             </div>
 
             <!-- Chat Partner Name + status -->
-            <div style="flex:1; min-width:0;">
+            <div style="flex:1; min-width:0;" onclick="viewUserProfile(document.getElementById('chatTargetName').innerText)">
                 <div id="chatTargetName"
-                    style="font-weight:700; font-size:1.05rem; color:#050505; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    style="font-weight:600; font-size:1.05rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                     User</div>
-                <div style="font-size:0.72rem; color:#4caf50; font-weight:600;">&#9679; Online</div>
+                <div id="chatOnlineStatus" style="font-size:0.75rem; opacity:0.9;">online</div>
+            </div>
+            
+            <div style="display:flex; gap:18px; padding-right:5px;">
+                <i data-lucide="video" size="20"></i>
+                <i data-lucide="phone" size="20"></i>
+                <i data-lucide="more-vertical" size="20"></i>
             </div>
         </div>
 
         <!-- ===== CHAT MESSAGES AREA ===== -->
-        <div id="chatHistory"
-            style="flex:1; overflow-y:auto; padding:14px 12px; background:#f0f2f5; display:flex; flex-direction:column; gap:6px;">
+        <div id="chatHistory" class="chat-history-container">
             <!-- Messages rendered here by JS -->
         </div>
 
         <!-- ===== MESSAGE INPUT AREA ===== -->
         <div style="
-            background:#fff;
+            background:#f0f0f0;
             border-top:1px solid #e4e6eb;
-            padding:10px 12px;
+            padding:6px 10px;
             display:flex;
             gap:8px;
-            align-items:flex-end;
-            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            align-items:center;
+            padding-bottom: max(6px, env(safe-area-inset-bottom));
             flex-shrink: 0;
             position: sticky;
             bottom: 0;
             z-index: 10;
         ">
-            <textarea id="chatInput" placeholder="Message..."
-                onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendChatMessage(); }"
-                style="flex:1; border-radius:24px; background:#f0f2f5; padding:10px 16px; border:none; font-size:0.95rem; resize:none; outline:none; font-family:inherit; height:42px; min-height:42px; max-height:100px; overflow-y:auto; line-height:22px;"></textarea>
+            <div style="flex:1; background:#fff; border-radius:30px; display:flex; align-items:center; padding: 2px 14px; box-shadow:0 1px 1px rgba(0,0,0,0.1);">
+                 <i data-lucide="smile" size="24" style="color:#8e8e8e; cursor:pointer;"></i>
+                 <textarea id="chatInput" placeholder="Message..."
+                    onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendChatMessage(); }"
+                    style="flex:1; background:transparent; border:none; padding:10px 10px; font-size:1rem; resize:none; outline:none; font-family:inherit; min-height:24px; max-height:120px; overflow-y:auto; line-height:20px;"></textarea>
+                 <i data-lucide="paperclip" size="24" style="color:#8e8e8e; cursor:pointer;"></i>
+            </div>
             <button onclick="sendChatMessage()"
-                style="background:#1877f2; color:white; border:none; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-shadow:0 2px 8px rgba(24,119,242,0.35); transition:background 0.2s;"
-                onmouseover="this.style.background='#166fe5';" onmouseout="this.style.background='#1877f2';">
-                <i data-lucide="send" size="20" style="stroke-width:2.5px;"></i>
+                style="background:#00a884; color:white; border:none; width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.25);">
+                <i data-lucide="send" size="24" style="fill:white;"></i>
             </button>
         </div>
 
@@ -2254,8 +2338,10 @@
                         renderSearch();
                     }
                     if (type === 'posts' && Array.isArray(data)) {
+                        console.log('📢 New posts received:', data.length);
                         localStorage.setItem('tnpvc_local_posts', JSON.stringify(data));
-                        renderPosts();
+                        // Force full re-render for new posts to ensure visibility across all users
+                        renderPosts(); 
                     }
                     if (type === 'notifications') {
                         localStorage.setItem('tnpvc_notifications', JSON.stringify(data));
@@ -2281,9 +2367,10 @@
                         if (typeof renderWorkUpdates === 'function') renderWorkUpdates();
                     }
                     if (type === 'messages') {
+                        // For privacy, messages are usually handled via individual socket.on('incoming_message')
+                        // but initial_sync or full sync might send them.
                         localStorage.setItem('tnpvc_messages', JSON.stringify(data));
                         renderMessagesList();
-                        // Also refresh active chat
                         if (window.currentChatTarget) renderChatHistory(window.currentChatTarget);
                     }
                 } catch (e) {
@@ -2377,12 +2464,12 @@
                 onlineUsersList = names || [];
                 if (document.getElementById('messagesView').classList.contains('active')) renderMessagesList();
                 if (window.currentChatTarget) {
-                     // Update status in chat modal header
-                     const statusEl = document.querySelector('#chatModal [style*="color:#4caf50;"]');
+                     // Update status in chat modal header using NEW ID
+                     const statusEl = document.getElementById('chatOnlineStatus');
                      if (statusEl) {
-                         const isOnline = onlineUsersList.includes(window.currentChatTarget);
-                         statusEl.style.color = isOnline ? '#4caf50' : '#8e8e8e';
-                         statusEl.innerHTML = isOnline ? '&#9679; Online' : '&#9679; Offline';
+                         const isOnline = onlineUsersList.includes(window.currentChatTarget.trim());
+                         statusEl.textContent = isOnline ? 'online' : 'offline';
+                         statusEl.style.color = isOnline ? 'white' : 'rgba(255,255,255,0.7)';
                      }
                 }
             });
@@ -3115,6 +3202,21 @@
             lucide.createIcons();
         }
 
+        function sharePost(id) {
+            const url = window.location.origin + window.location.pathname + '?post=' + id;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'TNPVC Update',
+                    text: 'Check out this post on TNPVC Association',
+                    url: url
+                }).catch(err => console.log('Share failed', err));
+            } else {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('Link copied to clipboard!');
+                });
+            }
+        }
+
         function toggleLike(id) {
             const posts = JSON.parse(localStorage.getItem('tnpvc_local_posts') || '[]');
             const post = posts.find(p => p.id == id);
@@ -3339,7 +3441,7 @@
             <button class="post-action-btn" onclick="openCommentModal(${p.id})">
                 <i data-lucide="message-circle"></i> Comment
             </button>
-            <button class="post-action-btn" onclick="alert('Shared')">
+            <button class="post-action-btn" onclick="sharePost(${p.id})">
                 <i data-lucide="share-2"></i> Share
             </button>
         </div>
@@ -3660,15 +3762,21 @@
             window.currentChatTarget = targetUName;
 
             let allUsers = JSON.parse(localStorage.getItem('tnpvc_all_users') || '[]');
-            let userObj = allUsers.find(u => u.name === targetUName) || { name: targetUName, avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' };
+            let userObj = allUsers.find(u => u.name === targetUName) || { name: targetUName, avatar: 'logo.png' };
 
             document.getElementById('chatTargetName').textContent = targetUName;
             document.getElementById('chatTargetAvatar').src = userObj.avatar;
+            
+            // Online status sync
+            const statusEl = document.getElementById('chatOnlineStatus');
+            if (statusEl) {
+                const isOnline = onlineUsersList.includes(targetUName.trim());
+                statusEl.textContent = isOnline ? 'online' : 'offline';
+                statusEl.style.color = isOnline ? 'white' : 'rgba(255,255,255,0.7)';
+            }
+
             document.getElementById('chatModal').classList.add('active');
-
-            // Re-render lucide icons so arrow-left button shows correctly
             if (typeof lucide !== 'undefined') lucide.createIcons();
-
             renderChatHistory(targetUName);
         }
 
@@ -3695,40 +3803,39 @@
                 return;
             }
 
+            const now = Date.now();
             historyDiv.innerHTML = thread.map((m, idx) => {
                 const isMe = (m.from || "").trim() === myName;
                 const prev = idx > 0 ? thread[idx - 1] : null;
                 const next = idx < thread.length - 1 ? thread[idx + 1] : null;
                 
-                // Grouping logic
                 const isFirstInGroup = !prev || (prev.from || "").trim() !== (m.from || "").trim();
                 const isLastInGroup = !next || (next.from || "").trim() !== (m.from || "").trim();
                 
-                const showOpponentAvatar = !isMe && isLastInGroup;
+                // Only animate if message is very new (last 2 seconds) AND it's the last message in the thread
+                const isRecent = (now - (m.id || 0)) < 2000;
+                const isLast = idx === thread.length - 1;
+                const animClass = (isRecent && isLast) ? 'chat-message-new' : '';
 
                 return `
-                    <div style="display:flex; flex-direction:${isMe ? 'row-reverse' : 'row'}; align-items:flex-end; gap:8px; margin-bottom: ${isLastInGroup ? '12px' : '3px'}; margin-top: ${isFirstInGroup ? '8px' : '0'};">
-                        <div style="width:28px; height:28px; flex-shrink:0;">
-                            ${showOpponentAvatar ? `<img src="${targetUser.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : ''}
-                        </div>
-                        <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'}; max-width:72%;">
-                            <div style="padding:10px 16px; font-size:0.95rem; line-height:1.45; word-break:break-word; white-space:pre-wrap;
-                                border-radius: ${isMe 
-                                    ? (isFirstInGroup ? '20px 20px 4px 20px' : (isLastInGroup ? '20px 4px 20px 20px' : '20px 4px 4px 20px')) 
-                                    : (isFirstInGroup ? '20px 20px 20px 4px' : (isLastInGroup ? '4px 20px 20px 20px' : '4px 20px 20px 4px'))};
-                                ${isMe ? 'background:linear-gradient(135deg, #764ba2 0%, #667eea 100%); color:white; box-shadow:0 2px 8px rgba(118,75,162,0.25);' : 'background:#ffffff; color:#050505; border:1px solid #e4e6eb;'}">
+                    <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'}; width:100%; margin-bottom:${isLastInGroup ? '8px' : '2px'};" class="${animClass}">
+                        <div class="chat-bubble ${isMe ? 'sent' : 'received'} ${isFirstInGroup ? 'tail' : ''}">
+                            <div style="position:relative; overflow:hidden;">
                                 ${m.text}
-                            </div>
-                            <div style="font-size: 0.65rem; color: #8e8e8e; margin-top: 4px; padding: 0 4px; display: ${isLastInGroup ? 'block' : 'none'};">
-                                ${m.time}
+                                <div class="chat-time">
+                                    ${m.time} ${isMe ? '<i data-lucide="check-check" style="width:13px; height:13px; color:#34b7f1; display:inline-block; vertical-align:middle; margin-left:3px;"></i>' : ''}
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
 
-            lucide.createIcons();
-            historyDiv.scrollTop = historyDiv.scrollHeight;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            
+            setTimeout(() => {
+                historyDiv.scrollTop = historyDiv.scrollHeight;
+            }, 50);
         }
 
         function sendChatMessage() {
@@ -4154,12 +4261,15 @@
                 lucide.createIcons();
             }
 
-            // Update comment count visibility if needed
-            const postCard = document.getElementById(`post-${id}`);
-            if (postCard && post.comments && post.comments.length > 0) {
-                 // Check if comment count row already exists, if not we might need to refresh
-                 // for simplicity if it exists update it, if not refresh
-                 renderPosts(); 
+            // Target comment count specific element
+            const commentCountEl = document.getElementById(`comment_count_${id}`);
+            if (commentCountEl && post.comments && post.comments.length > 0) {
+                 commentCountEl.innerHTML = `
+                    <div style="padding: 0 16px 8px; font-size: 0.88rem; color: #65676b; cursor: pointer;" onclick="openCommentModal(${id})">
+                        View all ${post.comments.length} comments
+                    </div>`;
+            } else if (commentCountEl) {
+                commentCountEl.innerHTML = '';
             }
         }
 
