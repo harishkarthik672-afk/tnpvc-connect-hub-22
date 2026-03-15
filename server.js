@@ -276,8 +276,9 @@ io.on('connection', async (socket) => {
         if (isDbConnected) {
             try {
                 await Post.create(postData);
-                const allPosts = await Post.find().sort({ createdAt: -1 }).limit(25).lean();
+                const allPosts = await Post.find().sort({ id: -1 }).limit(50).lean();
                 io.emit('db_updated', { type: 'posts', data: allPosts });
+                console.log(`✅ Post created via socket from ${postData.user}`);
             } catch (err) { console.error('Create post error:', err); }
         }
     });
@@ -374,7 +375,7 @@ io.on('connection', async (socket) => {
         if (isDbConnected) {
             try {
                 await Post.deleteOne({ id });
-                const allPosts = await Post.find().sort({ createdAt: -1 }).limit(25).lean();
+                const allPosts = await Post.find().sort({ id: -1 }).limit(50).lean();
                 io.emit('db_updated', { type: 'posts', data: allPosts });
             } catch (err) { console.error('Delete post error:', err); }
         }
@@ -408,13 +409,18 @@ app.get('/ping', (req, res) => {
 app.post('/api/upload-post', async (req, res) => {
     try {
         const postData = req.body;
-        if (isDbConnected) {
-            await Post.create(postData);
-            const allPosts = await Post.find().sort({ createdAt: -1 }).limit(25).lean();
-            io.emit('db_updated', { type: 'posts', data: allPosts });
+        if (!isDbConnected) {
+            return res.status(503).json({ status: 'error', message: 'Database not connected' });
         }
+        await Post.create(postData);
+        console.log(`✅ Post created via API from ${postData.user}, ID: ${postData.id}`);
+        const allPosts = await Post.find().sort({ id: -1 }).limit(50).lean();
+        io.emit('db_updated', { type: 'posts', data: allPosts });
         res.status(200).json({ status: 'success' });
-    } catch (err) { res.status(500).send(err.message); }
+    } catch (err) { 
+        console.error('API Upload error:', err.message);
+        res.status(500).send(err.message); 
+    }
 });
 
 server.listen(PORT, '0.0.0.0', () => {

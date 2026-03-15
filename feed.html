@@ -3014,10 +3014,11 @@
                 id: Date.now(),
                 user: currentUser.name.trim(),
                 avatar: currentUser.avatar || 'logo.png',
-                media: selectedFiles.length > 0 ? [...selectedFiles] : null,
+                media: selectedFiles.length > 0 ? [...selectedFiles] : [],
                 caption: text.trim(),
                 likes: 0,
                 likedBy: [],
+                comments: [],
                 time: "JUST NOW"
             };
 
@@ -3049,6 +3050,13 @@
 
             xhr.onload = () => {
                 if (xhr.status === 200) {
+                    // Optimistic update
+                    const currentLocalPosts = JSON.parse(localStorage.getItem('tnpvc_local_posts') || '[]');
+                    if (!currentLocalPosts.some(p => p.id === postData.id)) {
+                        currentLocalPosts.unshift(postData);
+                        localStorage.setItem('tnpvc_local_posts', JSON.stringify(currentLocalPosts));
+                    }
+
                     bar.style.width = '100%';
                     txt.textContent = '100%';
                     statusTxt.textContent = 'Success! Post Live.';
@@ -3056,10 +3064,7 @@
                     setTimeout(() => {
                         overlay.style.display = 'none';
                         closeModals();
-                        // Update local display
-                        overlay.style.display = 'none';
-                        closeModals();
-                        // Rely on socket broadcast for real-time sync instead of local unshift
+                        renderPosts(); // Refresh view immediately
                         
                         selectedFiles = [];
                         document.getElementById('postText').value = '';
