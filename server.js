@@ -15,7 +15,7 @@ const server = http.createServer(app);
 // ─── Socket.IO config ───────────────────────────────────────────────────────
 const io = new Server(server, {
     cors: { 
-        origin: ["https://www.tnpvc.co.in", "https://tnpvc.co.in", "http://localhost:3000", "http://127.0.0.1:3000"], 
+        origin: ["https://www.tnpvc.co.in", "https://tnpvc.co.in", "https://tnpvc-official-website-11.onrender.com", "http://localhost:3000", "http://127.0.0.1:3000"], 
         methods: ["GET", "POST"], 
         credentials: true 
     },
@@ -28,7 +28,7 @@ const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'db.json');
 
 app.use(cors({ 
-    origin: ["https://www.tnpvc.co.in", "https://tnpvc.co.in", "http://localhost:3000", "http://127.0.0.1:3000"], 
+    origin: ["https://www.tnpvc.co.in", "https://tnpvc.co.in", "https://tnpvc-official-website-11.onrender.com", "http://localhost:3000", "http://127.0.0.1:3000"], 
     methods: ["GET", "POST"], 
     credentials: true 
 }));
