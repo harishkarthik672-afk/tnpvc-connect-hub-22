@@ -46,29 +46,39 @@ let dbError = null;
 async function connectToDb() {
     console.log('⏳ Connecting to MongoDB Atlas...');
     const options = {
-        connectTimeoutMS: 30000,
-        socketTimeoutMS: 45000,
-        serverSelectionTimeoutMS: 30000,
+        connectTimeoutMS: 20000,
+        socketTimeoutMS: 30000,
+        serverSelectionTimeoutMS: 20000,
     };
 
+    // Use environment variable if available, else fallback to hardcoded
+    const uri = process.env.MONGO_URI || MONGO_URI_SRV;
+
     try {
-        await mongoose.connect(MONGO_URI_SRV, options);
-        console.log('✅ MongoDB Atlas Connected Successfully (SRV)');
+        const connPromise = mongoose.connect(uri, options);
+        // Race the connection against a hard timeout
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Mongoose connection timed out")), 25000));
+        
+        await Promise.race([connPromise, timeoutPromise]);
+        
+        console.log('✅ MongoDB Atlas Connected Successfully');
         isDbConnected = true;
         dbError = null;
         migrateIfNeeded();
     } catch (err) {
-        console.warn('⚠️ SRV Connection failed, trying legacy format...', err.message);
-        dbError = "SRV: " + err.message;
-        try {
-            await mongoose.connect(MONGO_URI_LEGACY, options);
-            console.log('✅ MongoDB Atlas Connected Successfully (Legacy)');
-            isDbConnected = true;
-            dbError = null;
-            migrateIfNeeded();
-        } catch (err2) {
-            console.error('❌ MongoDB Connection Error:', err2.message);
-            dbError += " | Legacy: " + err2.message;
+        console.error('❌ MongoDB Connection Error:', err.message);
+        dbError = err.message;
+        // Try fallback if we were using SRV and it failed
+        if (uri === MONGO_URI_SRV) {
+            console.log('🔄 Trying legacy fallback...');
+            try {
+                await mongoose.connect(MONGO_URI_LEGACY, options);
+                isDbConnected = true;
+                dbError = null;
+                migrateIfNeeded();
+            } catch (err2) {
+                dbError += " | Legacy Fallback Error: " + err2.message;
+            }
         }
     }
 }
