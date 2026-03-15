@@ -2242,8 +2242,8 @@
                 console.log('🔄 Data sync:', type);
                 
                 // Clean data names
-                if (type === 'users') data.forEach(u => { if(u.name) u.name = u.name.trim(); });
-                if (type === 'notifications') data.forEach(n => { 
+                if (type === 'users' && Array.isArray(data)) data.forEach(u => { if(u.name) u.name = u.name.trim(); });
+                if (type === 'notifications' && Array.isArray(data)) data.forEach(n => { 
                     if(n.from) n.from = n.from.trim(); 
                     if(n.to) n.to = n.to.trim(); 
                 });
@@ -2275,7 +2275,6 @@
                     if (type === 'prods') {
                         localStorage.setItem('tnpvc_local_prods', JSON.stringify(data));
                         renderPosts(); 
-                        renderProducts();
                     }
                     if (type === 'work_updates') {
                         localStorage.setItem('tnpvc_work_updates', JSON.stringify(data));
@@ -2295,23 +2294,10 @@
                 const liveEl = document.getElementById('socketLive');
                 if (liveEl) {
                     liveEl.style.background = '#22c55e';
-                    liveEl.style.color = '#fff';
+                    liveEl.style.boxShadow = '0 0 10px rgba(34, 197, 94, 0.6)';
                     setTimeout(() => {
-                        liveEl.style.background = 'rgba(37, 211, 102, 0.1)';
-                        liveEl.style.color = '#22c55e';
+                        liveEl.style.boxShadow = 'none';
                     }, 500);
-                }
-
-                // Refresh open chat modal live
-                const chatModal = document.getElementById('chatModal');
-                if (chatModal && chatModal.classList.contains('active') && window.currentChatTarget) {
-                    renderChatHistory(window.currentChatTarget);
-                }
-
-                // Refresh visitor profile if open
-                if (document.getElementById('userProfileView').classList.contains('active')) {
-                    const vName = (document.getElementById('visitorNameHeader') || {}).textContent;
-                    if (vName) viewUserProfile(vName);
                 }
             });
 
@@ -2916,6 +2902,11 @@
                 socket.emit('add_comment', { postId, comment });
             }
             input.value = '';
+            
+            // Re-render modal list and keep scroll at bottom
+            renderCommentsInsideModal(postId);
+            const list = document.getElementById('commentsList');
+            if (list) list.scrollTop = list.scrollHeight;
         }
 
         function handleFile(input) {
