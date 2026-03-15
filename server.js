@@ -41,6 +41,7 @@ const MONGO_URI_SRV = "mongodb+srv://harishkarthik672_db_user:m2lvRLHv0wV7yFev@t
 const MONGO_URI_LEGACY = "mongodb://harishkarthik672_db_user:m2lvRLHv0wV7yFev@tnpvcofficialwebsite-shard-00-00.ikz3lb3.mongodb.net:27017,tnpvcofficialwebsite-shard-00-01.ikz3lb3.mongodb.net:27017,tnpvcofficialwebsite-shard-00-02.ikz3lb3.mongodb.net:27017/tnpvc_db?ssl=true&replicaSet=atlas-pptvow-shard-0&authSource=admin&retryWrites=true&w=majority";
 
 let isDbConnected = false;
+let dbError = null;
 
 async function connectToDb() {
     console.log('⏳ Connecting to MongoDB Atlas...');
@@ -54,19 +55,20 @@ async function connectToDb() {
         await mongoose.connect(MONGO_URI_SRV, options);
         console.log('✅ MongoDB Atlas Connected Successfully (SRV)');
         isDbConnected = true;
+        dbError = null;
         migrateIfNeeded();
     } catch (err) {
         console.warn('⚠️ SRV Connection failed, trying legacy format...', err.message);
+        dbError = "SRV: " + err.message;
         try {
             await mongoose.connect(MONGO_URI_LEGACY, options);
             console.log('✅ MongoDB Atlas Connected Successfully (Legacy)');
             isDbConnected = true;
+            dbError = null;
             migrateIfNeeded();
         } catch (err2) {
             console.error('❌ MongoDB Connection Error:', err2.message);
-            if (err2.message.includes('ECONNREFUSED')) {
-                console.error('👉 Tip: Check your DNS settings or MongoDB Atlas IP Whitelist.');
-            }
+            dbError += " | Legacy: " + err2.message;
         }
     }
 }
@@ -436,7 +438,8 @@ app.get('/ping', (req, res) => {
     res.json({ 
         status: 'ok', 
         db: isDbConnected, 
-        mongoose: mongoose.connection.readyState === 1,
+        error: dbError,
+        mongoose: mongoose.connection.readyState,
         time: new Date() 
     });
 });
