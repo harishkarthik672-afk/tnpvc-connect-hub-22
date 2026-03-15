@@ -3316,14 +3316,16 @@
             ${makeCarousel(Array.isArray(p.media) ? p.media : [p.media], p.id)}
         </div>` : ''}
         
-        <div class="post-likes-count">
+        <div class="post-likes-count" id="likes_${p.id}">
             ${p.likes > 0 ? `<div style="background:#f3425f; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; margin-right:4px;"><i data-lucide="heart" style="color:white; width:10px; height:10px; fill:white;"></i></div> ${p.likes}` : ''}
         </div>
 
+        <div id="comment_count_${p.id}">
         ${p.comments && p.comments.length > 0 ? `
         <div style="padding: 0 16px 8px; font-size: 0.88rem; color: #65676b; cursor: pointer;" onclick="openCommentModal(${p.id})">
             View all ${p.comments.length} comments
         </div>` : ''}
+        </div>
         
         <div class="post-actions">
             <button class="post-action-btn ${isLiked ? 'liked' : ''}" onclick="toggleLike(${p.id})">
@@ -3674,37 +3676,46 @@
             let allUsers = JSON.parse(localStorage.getItem('tnpvc_all_users') || '[]');
             let targetUser = allUsers.find(u => u.name === targetUName) || { name: targetUName, avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' };
 
-            const thread = messages.filter(m => (m.from === myName && m.to === targetUName) || (m.from === targetUName && m.to === myName));
+            const thread = messages
+                .filter(m => ((m.from || "").trim() === myName && (m.to || "").trim() === (targetUName || "").trim()) || ((m.from || "").trim() === (targetUName || "").trim() && (m.to || "").trim() === myName))
+                .sort((a, b) => (a.id || 0) - (b.id || 0));
 
             if (thread.length === 0) {
-                // Show chat start message with profile image
                 historyDiv.innerHTML = `
-                    <div style="display:flex; flex-direction:column; align-items:center; padding: 30px 20px; gap:12px;">
-                        <img src="${targetUser.avatar}" style="width:72px; height:72px; border-radius:50%; object-fit:cover; border:3px solid #e7f0fd; box-shadow:0 2px 12px rgba(24,119,242,0.15);">
-                        <div style="font-weight:700; font-size:1rem; color:#050505;">${targetUName}</div>
-                        <div style="text-align:center; color:#8e8e8e; font-size:0.82rem; background:#fff; padding:8px 18px; border-radius:20px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">Start of your conversation with ${targetUName}</div>
+                    <div style="display:flex; flex-direction:column; align-items:center; padding: 40px 20px; gap:12px;">
+                        <img src="${targetUser.avatar}" style="width:82px; height:82px; border-radius:50%; object-fit:cover; border:3px solid #e7f0fd; box-shadow:0 10px 20px rgba(0,0,0,0.1);">
+                        <div style="font-weight:700; font-size:1.1rem; color:#050505;">${targetUName}</div>
+                        <div style="text-align:center; color:#8e8e8e; font-size:0.85rem; max-width:200px;">This is the start of your message history with ${targetUName}.</div>
                     </div>`;
                 return;
             }
 
             historyDiv.innerHTML = thread.map((m, idx) => {
-                const isMe = m.from === myName;
+                const isMe = (m.from || "").trim() === myName;
                 const prev = idx > 0 ? thread[idx - 1] : null;
                 const next = idx < thread.length - 1 ? thread[idx + 1] : null;
-                const showTime = (!prev || m.time !== prev.time || prev.from !== m.from);
-                // Show avatar for opponent only at the last consecutive message from them
-                const showOpponentAvatar = !isMe && (!next || next.from !== m.from);
+                
+                // Grouping logic
+                const isFirstInGroup = !prev || (prev.from || "").trim() !== (m.from || "").trim();
+                const isLastInGroup = !next || (next.from || "").trim() !== (m.from || "").trim();
+                
+                const showOpponentAvatar = !isMe && isLastInGroup;
 
                 return `
-                    <div style="display:flex; flex-direction:${isMe ? 'row-reverse' : 'row'}; align-items:flex-end; gap:6px; margin-bottom: ${showTime ? '10px' : '2px'};">
-                        ${!isMe ? `<img src="${targetUser.avatar}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; flex-shrink:0; margin-bottom:2px; opacity:${showOpponentAvatar ? '1' : '0'};">` : ''}
-                        <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'}; max-width:75%;">
-                            <div style="padding:10px 14px; border-radius:${isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px'}; font-size:0.93rem; line-height:1.45; word-break:break-word;
-                                ${isMe ? 'background:#1877f2; color:#ffffff; box-shadow:0 1px 4px rgba(24,119,242,0.3);' : 'background:#ffffff; color:#050505; box-shadow:0 1px 3px rgba(0,0,0,0.08);'}">
+                    <div style="display:flex; flex-direction:${isMe ? 'row-reverse' : 'row'}; align-items:flex-end; gap:8px; margin-bottom: ${isLastInGroup ? '12px' : '3px'}; margin-top: ${isFirstInGroup ? '8px' : '0'};">
+                        <div style="width:28px; height:28px; flex-shrink:0;">
+                            ${showOpponentAvatar ? `<img src="${targetUser.avatar}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : ''}
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:${isMe ? 'flex-end' : 'flex-start'}; max-width:72%;">
+                            <div style="padding:10px 16px; font-size:0.95rem; line-height:1.45; word-break:break-word; white-space:pre-wrap;
+                                border-radius: ${isMe 
+                                    ? (isFirstInGroup ? '20px 20px 4px 20px' : (isLastInGroup ? '20px 4px 20px 20px' : '20px 4px 4px 20px')) 
+                                    : (isFirstInGroup ? '20px 20px 20px 4px' : (isLastInGroup ? '4px 20px 20px 20px' : '4px 20px 20px 4px'))};
+                                ${isMe ? 'background:linear-gradient(135deg, #764ba2 0%, #667eea 100%); color:white; box-shadow:0 2px 8px rgba(118,75,162,0.25);' : 'background:#ffffff; color:#050505; border:1px solid #e4e6eb;'}">
                                 ${m.text}
                             </div>
-                            <div style="font-size: 0.62rem; color: #a1aebf; margin-top: 3px; display:flex; align-items:center; gap:3px; padding: 0 4px;">
-                                ${m.time} ${isMe ? '<i data-lucide="check-check" size="11" color="#1877f2"></i>' : ''}
+                            <div style="font-size: 0.65rem; color: #8e8e8e; margin-top: 4px; padding: 0 4px; display: ${isLastInGroup ? 'block' : 'none'};">
+                                ${m.time}
                             </div>
                         </div>
                     </div>
@@ -4123,12 +4134,12 @@
             const post = posts.find(p => p.id == id);
             if (!post) return;
 
-            const likeBtn = document.querySelector(`[onclick="toggleLike(${id})"]`);
+            const likeBtn = document.querySelector(`[onclick*="toggleLike(${id})"]`);
             if (likeBtn) {
                 const myName = (currentUser.name || '').trim();
                 const alreadyLiked = post.likedBy && post.likedBy.some(u => (u || '').trim() === myName);
                 likeBtn.style.color = alreadyLiked ? '#ed4956' : '#262626';
-                likeBtn.innerHTML = alreadyLiked ? '<i data-lucide="heart" style="fill:#ed4956"></i> Like' : '<i data-lucide="heart"></i> Like';
+                likeBtn.innerHTML = alreadyLiked ? '<i data-lucide="heart" style="fill:#ed4956"></i> Like' : `<i data-lucide="heart"></i> Like`;
                 lucide.createIcons();
             }
 

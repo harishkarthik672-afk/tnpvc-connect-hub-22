@@ -208,15 +208,16 @@ async function migrateIfNeeded() {
 }
 
 // ─── Utility to fetch full state ─────────────────────────────────────────────
-async function getFullState() {
+async function getFullState(userName) {
     if (!isDbConnected) return { all_users: [], posts: [], notifications: [], messages: [], work_updates: [], prods: [], followers: {} };
 
     try {
-        const [all_users, posts, notifications, messages, work_updates, prods, followersRaw] = await Promise.all([
+        const myName = (userName || "").trim();
+        const [all_users, posts, notifications, allMessages, work_updates, prods, followersRaw] = await Promise.all([
             User.find().lean(),
-            Post.find().sort({ createdAt: -1 }).limit(25).lean(),
-            Notification.find().sort({ createdAt: -1 }).limit(30).lean(),
-            Message.find().sort({ createdAt: -1 }).limit(50).lean(),
+            Post.find().sort({ createdAt: -1 }).limit(30).lean(),
+            Notification.find({ to: myName }).sort({ createdAt: -1 }).limit(30).lean(),
+            myName ? Message.find({ $or: [{ from: myName }, { to: myName }] }).sort({ createdAt: -1 }).limit(100).lean() : Promise.resolve([]),
             WorkUpdate.find().sort({ createdAt: -1 }).limit(30).lean(),
             Product.find().sort({ createdAt: -1 }).limit(50).lean(),
             Follower.find().lean()
@@ -225,28 +226,40 @@ async function getFullState() {
         const followers = {};
         followersRaw.forEach(f => { followers[f.targetUser] = f.followersList; });
 
-        return { all_users, posts, notifications, messages, work_updates, prods, followers };
+        return { all_users, posts, notifications, messages: allMessages, work_updates, prods, followers };
     } catch (e) {
         console.error('Error fetching state:', e.message);
         return { all_users: [], posts: [], notifications: [], messages: [], work_updates: [], prods: [], followers: {} };
     }
 }
 
-const onlineUsers = {}; 
+const onlineUsers = new Map(); // Name -> Set(socket.ids)
 
 // ─── Socket.IO Events ────────────────────────────────────────────────────────
 io.on('connection', async (socket) => {
     console.log('📡 Client connected:', socket.id);
+    // Send public state first
     socket.emit('initial_sync', await getFullState());
 
-    socket.on('user_online', (userName) => {
+    socket.on('user_online', async (userName) => {
         if (userName) {
             const name = userName.trim();
-            onlineUsers[name] = socket.id;
+            if (!onlineUsers.has(name)) onlineUsers.set(name, new Set());
+            onlineUsers.get(name).add(socket.id);
             socket.data.userName = name;
-            io.emit('online_users', Object.keys(onlineUsers));
+            
+            // Re-sync with private data
+            socket.emit('initial_sync', await getFullState(name));
+            io.emit('online_users', Array.from(onlineUsers.keys()));
         }
     });
+
+    function sendToUser(name, event, data) {
+        const sockets = onlineUsers.get((name || "").trim());
+        if (sockets) {
+            sockets.forEach(sid => io.to(sid).emit(event, data));
+        }
+    }
 
     socket.on('sync_user', async (userData) => {
         const name = (userData.name || '').trim();
@@ -285,8 +298,9 @@ io.on('connection', async (socket) => {
         try {
             await Notification.deleteMany({ from, to, type: 'follow_request' });
             await Notification.create({ ...notifData, from, to });
-            io.emit('db_updated', { type: 'notifications', data: await Notification.find().sort({ createdAt: -1 }).limit(30).lean() });
-            if (onlineUsers[to]) io.to(onlineUsers[to]).emit('new_notification', notifData);
+            // Only send to involved parties? Actually full notifications are often needed for badge updates.
+            // But for privacy, we should probably filter. For now, let's keep it but at least target the new_notification.
+            if (onlineUsers.has(to)) sendToUser(to, 'new_notification', notifData);
         } catch (err) { console.error('Send notification error:', err); }
     });
 
@@ -347,8 +361,11 @@ io.on('connection', async (socket) => {
         if (isDbConnected) {
             try {
                 await Message.create(msgData);
-                io.emit('db_updated', { type: 'messages', data: await Message.find().sort({ createdAt: -1 }).limit(50).lean() });
-                if (onlineUsers[msgData.to]) io.to(onlineUsers[msgData.to]).emit('incoming_message', msgData);
+                // Broadcast to sender and receiver only for privacy
+                const from = (msgData.from || "").trim();
+                const to = (msgData.to || "").trim();
+                sendToUser(from, 'incoming_message', msgData);
+                if (to !== from) sendToUser(to, 'incoming_message', msgData);
             } catch (err) { console.error('Send message error:', err); }
         }
     });
@@ -365,10 +382,15 @@ io.on('connection', async (socket) => {
 
     socket.on('disconnect', () => {
         const name = socket.data.userName;
-        if (name && onlineUsers[name] === socket.id) {
-            delete onlineUsers[name];
-            io.emit('online_users', Object.keys(onlineUsers));
+        if (name && onlineUsers.has(name)) {
+            const sockets = onlineUsers.get(name);
+            sockets.delete(socket.id);
+            if (sockets.size === 0) {
+                onlineUsers.delete(name);
+                io.emit('online_users', Array.from(onlineUsers.keys()));
+            }
         }
+        console.log('📡 Client disconnected:', socket.id);
     });
 });
 
