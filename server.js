@@ -65,7 +65,7 @@ async function connectToDb() {
         console.log('✅ MongoDB Atlas Connected Successfully');
         isDbConnected = true;
         dbError = null;
-        // migrateIfNeeded(); // Disabled temporarily to debug hang
+        migrateIfNeeded();
     } catch (err) {
         console.error('❌ MongoDB Connection Error:', err.message);
         dbError = err.message;
@@ -75,11 +75,14 @@ async function connectToDb() {
                 await mongoose.connect(MONGO_URI_LEGACY, options);
                 isDbConnected = true;
                 dbError = null;
-                // migrateIfNeeded(); // Disabled temporarily
+                migrateIfNeeded();
+                return;
             } catch (err2) {
                 dbError += " | Legacy Fallback Error: " + err2.message;
             }
         }
+        console.log('🔁 Retrying in 10 seconds...');
+        setTimeout(connectToDb, 10000);
     }
 }
 
