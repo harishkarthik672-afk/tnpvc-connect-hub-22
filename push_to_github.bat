@@ -1,0 +1,19 @@
+@echo off
+echo --- Starting GitHub Push ---
+echo Initializing Git...
+git init
+echo Adding Remote...
+git remote add origin https://github.com/harishkarthik672-afk/tnpvc-connect-hub-22.git
+echo Staging Files...
+git add .
+echo Committing Changes...
+git commit -m "Bypass login payment and fix auth logic"
+echo Renaming Branch...
+git branch -M main
+echo Pushing to GitHub...
+git push -u origin main
+echo --- Finished! ---
+if %errorlevel% neq 0 (
+  echo Something went wrong! Please check if Git is in your PATH.
+)
+pause

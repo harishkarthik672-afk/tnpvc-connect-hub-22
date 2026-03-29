@@ -426,14 +426,10 @@
             if (u.profileCompleted && u.isSubscribed) {
               // Redirect instantly, do not wait
               window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
-            } else if (u.profileCompleted && !u.isSubscribed) {
-              // Partially complete, needs payment
+            } else if (u.profileCompleted) {
+              // Direct to App, skip payment
               document.addEventListener('DOMContentLoaded', () => {
-                document.getElementById('screen-hello').classList.add('hidden');
-                document.getElementById('screen-auth').classList.add('hidden');
-                document.getElementById('modal-role').classList.add('hidden');
-                document.getElementById('screen-profile').classList.add('hidden');
-                document.getElementById('screen-payment').classList.remove('hidden');
+                window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
               });
             } else {
               // Wait for DOM to finish assembling to uncover the profile setup screen directly
@@ -533,14 +529,8 @@
       if (!userData.profileCompleted) {
         document.getElementById('screen-profile').classList.remove('hidden');
         document.getElementById('p-name').value = userData.name || '';
-      } else if (!userData.isSubscribed) {
-        if(document.getElementById('screen-payment')) {
-          document.getElementById('screen-payment').classList.remove('hidden');
-        } else {
-          // Fallback if payment screen not available
-          window.location.replace(userData.role === 'labour' ? 'labour.html' : 'contractor.html');
-        }
       } else {
+        // Skip subscription check and go to dashboard
         window.location.replace(userData.role === 'labour' ? 'labour.html' : 'contractor.html');
       }
     };
@@ -565,7 +555,7 @@
         u.district = district;
         u.address = addr;
         u.profileCompleted = true;
-        u.isSubscribed = false; 
+        u.isSubscribed = true; // Skip payment
         u.updatedAt = new Date().toISOString();
         
         localStorage.setItem('tnpvc_user', JSON.stringify(u));
