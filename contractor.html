@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Contractor Hub - TNPVC</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --primary: #098E6E;
+      --primary-light: #E2F5EF;
+      --bg: #F4F6F9;
+      --card: #FFFFFF;
+      --text-dark: #16202A;
+      --text-muted: #828F9E;
+      --border: #EDF1F5;
+      --black: #1A1D20;
+      --warning: #F59E0B;
+      --warning-light: #FEF3C7;
+    }
+
+    /* Basic Resets */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text-dark); -webkit-tap-highlight-color: transparent; }
+    
+    .app-container { max-width: 480px; margin: 0 auto; background: var(--bg); min-height: 100vh; position: relative; padding-bottom: 110px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.05); overflow-x: hidden; }
+
+    /* Toast */
+    #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--black); color: #fff; padding: 12px 24px; border-radius: 100px; font-size: 14px; font-weight: 600; z-index: 9999; opacity: 0; transition: all 0.3s; pointer-events: none; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Payment Modal Styles */
+    .pay-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(8px); }
+    .pay-modal.show { display: flex; }
+    .pay-card { background: #FFF; width: 100%; max-width: 380px; border-radius: 32px; padding: 32px; text-align: center; animation: zoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    @keyframes zoomIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .pay-qr-box { background: #F9FAFB; padding: 24px; border-radius: 20px; margin-bottom: 24px; border: 1.5px dashed var(--border); }
+    .pay-qr-img { width: 100%; max-width: 180px; height: 180px; margin: 0 auto; display: block; }
+    .pay-title { font-size: 20px; font-weight: 800; margin-bottom: 8px; color: var(--text-dark); }
+    .pay-amt { font-size: 32px; font-weight: 800; color: var(--primary); margin-bottom: 24px; }
+    .pay-upi-btn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; background: var(--black); color: #FFF; border: none; padding: 16px; border-radius: 100px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 12px; }
+    .pay-cancel { background: none; border: none; color: var(--text-muted); font-size: 14px; font-weight: 700; cursor: pointer; }
+
+    /* Ads Slider Modern */
+    .ad-slider { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 10px 16px 20px; margin: 0 -16px 20px; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+    .ad-slider::-webkit-scrollbar { display: none; }
+    .ad-card { flex: 0 0 85%; max-width: 400px; scroll-snap-align: center; border-radius: 24px; padding: 24px; position: relative; overflow: hidden; height: 160px; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; box-shadow: 0 8px 25px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.12); transition: transform 0.2s ease; background-size: cover; background-position: center; }
+    .ad-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%); z-index: 1; }
+    .ad-card.no-text::before { display: none; }
+    .ad-card:active { transform: scale(0.98); }
+    .ad-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; line-height: 1.2; position: relative; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    .ad-card p { font-size: 12px; font-weight: 600; opacity: 0.95; position: relative; z-index: 2; max-width: 90%; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+    .ad-card-badge { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); padding: 5px 12px; border-radius: 100px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; z-index: 2; border: 1px solid rgba(255,255,255,0.1); }
+    .ad-card.ad-1 { background: linear-gradient(135deg, #098E6E, #045D48); }
+    .ad-card.ad-2 { background: linear-gradient(135deg, #1A1D20, #33393F); }
+    .ad-card.ad-4 { background: linear-gradient(135deg, #6366F1, #4F46E5); }
+
+    /* Header Styles */
+    .header-wrap { padding: 16px 16px 0px; background: #fff; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .user-greet { display: flex; align-items: center; gap: 14px; }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; background: #E5E7EB; object-fit: cover; }
+    .greet-text h3 { font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 2px; }
+    .greet-text p { font-size: 12px; font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+    .bell-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--card); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative; }
+    .bell-btn svg { width: 20px; height: 20px; stroke: var(--text-dark); stroke-width: 2.2; fill: none; }
+    .bell-dot { position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; background: #EF4444; border-radius: 50%; border: 2px solid var(--card); }
+
+    /* Search Bar Style */
+    .search-wrap { position: relative; margin-bottom: 24px; }
+    .search-wrap input { width: 100%; background: #F8FAFC; border: 1.5px solid var(--border); padding: 16px 50px; border-radius: 18px; font-size: 14px; font-weight: 700; outline: none; transition: 0.3s; color: var(--text-dark); }
+    .search-wrap input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 4px 15px rgba(9,142,110,0.08); }
+    .search-wrap .sh-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; stroke: var(--text-muted); stroke-width: 2.2; fill: none; }
+    .search-wrap input::placeholder { color: var(--text-muted); font-weight: 600; }
+
+    /* Stats Row (Modern Round Style) */
+    .stats-row { display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 20px; margin: 0 -16px 24px; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+    .stats-row::-webkit-scrollbar { display: none; }
+    .stat-pill { flex: 0 0 145px; background: var(--card); border: 1.5px solid var(--border); border-radius: 24px; padding: 16px 20px; box-shadow: 0 6px 15px rgba(0, 0, 0, 0.03); display: flex; flex-direction: column; justify-content: center; transition: 0.2s; }
+    .stat-pill:active { transform: scale(0.96); }
+    .stat-val { font-size: 18px; font-weight: 800; color: var(--text-dark); margin-bottom: 2px; }
+    .stat-lbl { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Navigation Expansion (Labour Style - Fit Bottom) */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; height: 75px; background: #fff; border-top: 1.5px solid #EDF1F5; box-shadow: 0 -4px 20px rgba(0,0,0,0.07); display: flex; align-items: center; justify-content: space-around; padding: 0 6px 10px; z-index: 10001; }
+    .b-nav-item { display: flex; align-items: center; justify-content: center; border: none; background: none; cursor: pointer; height: 46px; padding: 0 13px; border-radius: 100px; font-family: inherit; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); overflow: hidden; }
+    .b-nav-item svg { width: 22px; height: 22px; fill: none; stroke: #828F9E; stroke-width: 2.2; transition: stroke 0.25s ease; flex-shrink: 0; }
+    .b-nav-item span { font-size: 13px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; max-width: 0; margin-left: 0; opacity: 0; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); flex-shrink: 0; }
+    .b-nav-item.active { background: #098E6E; padding: 0 20px; }
+    .b-nav-item.active svg { stroke: #fff; }
+    .b-nav-item.active span { max-width: 100px; margin-left: 8px; opacity: 1; }
+    .b-nav-item:not(.active):hover { background: rgba(9,142,110,0.1); }
+    .b-nav-item:not(.active):hover svg { stroke: #098E6E; }
+
+    /* Alert Box Style */
+    .alert-box { background: #FEF2F2; border: 1.5px solid #F87171; border-radius: 20px; padding: 18px; margin-bottom: 24px; display: none; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 4px 15px rgba(220, 38, 38, 0.1); }
+    .alert-box.show { display: flex; }
+    .alert-icon { width: 44px; height: 44px; border-radius: 14px; background: #FFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .alert-icon svg { width: 24px; height: 24px; stroke: #DC2626; fill: none; stroke-width: 2.5; }
+    .alert-txt { flex: 1; }
+    .alert-txt h4 { font-size: 15px; font-weight: 800; color: #DC2626; margin-bottom: 2px; }
+    .alert-txt p { font-size: 12px; font-weight: 600; color: #991B1B; opacity: 0.8; }
+    .alert-btn { background: #DC2626; color: #FFF; border: none; padding: 10px 18px; border-radius: 100px; font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .alert-btn:active { transform: scale(0.95); }
+
+    /* Notification Page Styles */
+    .notif-item { display: flex; align-items: center; gap: 16px; padding: 20px; background: var(--card); border: 1.5px solid var(--border); border-radius: 20px; margin: 0 24px 12px; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .notif-item:active { transform: scale(0.96); }
+    .ni-icon { width: 50px; height: 50px; border-radius: 14px; background: var(--primary-light); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:22px; }
+    .ni-content { flex: 1; }
+    .ni-title { font-size: 14px; font-weight: 800; color: var(--text-dark); margin-bottom: 2px; }
+    .ni-body { font-size: 12px; color: var(--text-muted); font-weight: 600; line-height: 1.4; }
+    .ni-time { font-size: 10px; color: #828F9E; font-weight: 700; display: block; margin-top: 6px; }
+
+    /* Dropdown More Menu */
+    .more-menu { position: relative; }
+    .more-dropdown { position: absolute; top: 100%; right: 0; background: #FFF; border: 1.5px solid var(--border); border-radius: 12px; padding: 6px; min-width: 140px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: none; z-index: 100; animation: fadeIn 0.2s ease; }
+    .more-dropdown.show { display: block; }
+    .more-item { padding: 10px 14px; font-size: 13px; font-weight: 700; color: #DC2626; border-radius: 8px; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+    .more-item:active { background: #FEE2E2; }
+
+    /* Restoration of needed layout styles */
+    .btn-dark { background: var(--black); color: #FFF; border: none; padding: 18px; border-radius: 18px; font-size: 15px; font-weight: 800; width: 100%; cursor: pointer; transition: all 0.3s; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: block; text-align: center; }
+    .btn-dark:active { transform: scale(0.97); opacity: 0.9; }
+    .btn-dark:hover { background: #333; }
+
+    .section-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+    .page { display: none; animation: fadeIn 0.3s ease; padding-bottom: 20px; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 16px 16px 0; }
+    .page-header h1 { font-size: 20px; font-weight: 800; }
+    .back-arrow { width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; background: var(--card); cursor: pointer; }
+
+    .form-wrap { padding: 0 24px 100px; }
+    .cfg-card { background: var(--card); border: 1.5px solid var(--border); border-radius: 24px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+    .cfg-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .cfg-head h4 { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .cfg-btn { background: var(--primary-light); color: var(--primary); border: none; padding: 8px 16px; border-radius: 100px; font-size: 11px; font-weight: 800; cursor: pointer; }
+    
+    .cfg-val input, .cfg-val textarea, .cfg-val select { width: 100%; background: #F8FAFC; border: 1.5px solid var(--border); border-radius: 14px; padding: 14px 18px; font-size: 14px; font-weight: 700; color: var(--text-dark); outline: none; transition: 0.3s; margin-bottom: 0px; display: block; overflow: hidden; }
+    .cfg-val input:focus, .cfg-val textarea:focus, .cfg-val select:focus { border-color: var(--primary); background: #fff; box-shadow: 0 4px 12px rgba(9,142,110,0.08); }
+
+    /* Premium Profile Styles */
+    .prof-list-item { background: #fff; border: 1.5px solid var(--border); padding: 16px 20px; border-radius: 18px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
+    .prof-list-item:active { background: #F8FAFC; transform: scale(0.98); }
+    .pli-left { display: flex; align-items: center; gap: 14px; }
+    .pli-icon { width: 40px; height: 40px; border-radius: 12px; background: #F1F5F9; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .pli-txt { font-size: 14px; font-weight: 700; color: var(--text-dark); }
+    .pli-arrow { width: 18px; height: 18px; stroke: #94A3B8; stroke-width: 2.5; fill: none; }
+    .premium-banner { background: linear-gradient(135deg, #098E6E, #14B8A6); border-radius: 24px; padding: 24px; color: #fff; position: relative; overflow: hidden; margin-bottom: 24px; }
+    .premium-banner::after { content: '🏢'; position: absolute; right: -10px; bottom: -10px; font-size: 80px; opacity: 0.1; }
+
+    /* Restoration of needed layout styles */
+    .cfg-val select { -webkit-appearance: none; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23828F9E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 40px; }
+
+    /* Booking Filter Tabs (Small Pill Style) */
+    .booking-tabs { display: flex; gap: 10px; padding: 0 24px 20px; overflow-x: auto; scrollbar-width: none; }
+    .btab { padding: 10px 20px; border-radius: 100px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1.5px solid var(--border); background: var(--card); color: var(--text-muted); white-space: nowrap; }
+    .btab.active { background: var(--black); color: #FFF; border-color: var(--black); }
+
+    .booking-card { background: var(--card); border-radius: 24px; border: 1.5px solid var(--border); margin-bottom: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+    .bc-status-pill { font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 100px; text-transform: uppercase; }
+  </style>
+</head>
+
+<body>
+  <div id="toast"></div>
+
+  <!-- PAYMENT MODAL -->
+  <div id="payment-modal" class="pay-modal">
+    <div class="pay-card">
+      <h2 class="pay-title">Complete Payment</h2>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:20px;">Scan to pay via any UPI App</p>
+      <div class="pay-qr-box">
+        <img id="pay-qr-img" class="pay-qr-img" src="">
+      </div>
+      <div class="pay-amt" id="pay-amt-display">₹1000</div>
+      
+      <div id="utr-section" style="display:none; margin-top:20px; animation:fadeIn 0.3s ease;">
+        <input type="number" id="pay-utr-input" placeholder="Enter 12-Digit Transaction ID (UTR)" style="width:100%; border:1.5px solid var(--border); padding:16px; border-radius:16px; font-size:14px; font-weight:800; margin-bottom:12px; text-align:center; outline:none;" oninput="this.value=this.value.slice(0,12)">
+        <button class="pay-upi-btn" id="confirm-utr-btn" style="background:var(--primary);">Verify & Complete</button>
+      </div>
+
+      <div id="pay-action-section">
+        <button class="pay-upi-btn" id="pay-deep-link-btn">Pay via UPI App</button>
+        <button class="pay-cancel" onclick="closePayModal()">Cancel Payment</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <!-- HOME TAB -->
+    <div id="tab-home" class="page active">
+      <div class="header-wrap">
+        <div class="header-top">
+          <div class="user-greet">
+            <img src="https://ui-avatars.com/api/?name=Contractor&background=098E6E&color=fff" class="avatar" id="home-avatar">
+            <div class="greet-text">
+              <h2 id="home-user-name" style="font-size: 18px; font-weight: 800; color: var(--text-dark);">Contractor</h2>
+              <p><span>📍</span> <span id="home-user-loc">Chennai, TN</span></p>
+            </div>
+          </div>
+          <div class="bell-btn" onclick="switchNav(this, 'tab-notif')">
+            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <div id="bell-dot" class="bell-dot" style="display:none;"></div>
+          </div>
+        </div>
+
+        <div class="search-wrap">
+          <svg class="sh-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search for workers or material...">
+        </div>
+
+        <h2 class="section-title">New Opportunities</h2>
+        <div class="ad-slider" style="margin-bottom: 24px;">
+          <div class="ad-card no-text" style="background-image: url('bbbbb.jpg');"></div>
+          <div class="ad-card ad-1">
+            <div class="ad-card-badge">HOT</div>
+            <h3>Premium Leads</h3>
+            <p>Get instant access to top-tier industrial PVC works.</p>
+          </div>
+          <div class="ad-card no-text" style="background-image: url('aaaa.jpg');"></div>
+          <div class="ad-card no-text" style="background-image: url('ccccc.jpeg');"></div>
+        </div>
+
+        <div class="alert-box" id="sub-alert">
+          <div class="alert-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div class="alert-txt">
+            <h4>Subscription Expired!</h4>
+            <p>Renew now to reach thousands of workers.</p>
+          </div>
+          <button class="alert-btn" onclick="renewPlan()">Renew Plan</button>
+        </div>
+
+        <h2 class="section-title">Performance Stats</h2>
+        <div class="stats-row">
+          <div class="stat-pill" style="border-left: 4px solid #098E6E;">
+            <div class="stat-lbl">Total Posts</div>
+            <div class="stat-val" id="stat-total-posts">0</div>
+          </div>
+          <div class="stat-pill" style="border-left: 4px solid #F59E0B;">
+            <div class="stat-lbl">Finished</div>
+            <div class="stat-val" id="stat-finished-posts">0</div>
+          </div>
+          <div class="stat-pill" style="border-left: 4px solid #1A1D20;">
+            <div class="stat-lbl">Total Spend</div>
+            <div class="stat-val">₹<span id="stat-total-spend">0</span></div>
+          </div>
+          <div class="stat-pill" style="border-left: 4px solid #EF4444;">
+            <div class="stat-lbl">Validity</div>
+            <div class="stat-val" id="stat-validity">0 Days</div>
+          </div>
+        </div>
+
+        <h2 class="section-title">Promotions</h2>
+        <div class="ad-slider">
+          <div class="ad-card no-text" style="background-image: url('aaaa.jpg');"></div>
+          <div class="ad-card no-text" style="background-image: url('ccccc.jpeg');"></div>
+          <div class="ad-card no-text" style="background-image: url('bbbbb.jpg');"></div>
+          <div class="ad-card ad-2">
+            <div class="ad-card-badge">OFFER</div>
+            <h3>Material Deals</h3>
+            <p>Save up to 15% on bulk PVC orders.</p>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 class="section-title" style="margin-bottom:0;">Live Feed</h2>
+          <span style="font-size:12px; font-weight:800; color:var(--primary); cursor:pointer;" onclick="switchNav(document.getElementById('nav-bookings'), 'tab-bookings')">View All</span>
+        </div>
+        <div id="home-pipeline"></div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATION PAGE -->
+    <div id="tab-notif" class="page">
+      <div class="page-header">
+        <div class="back-arrow" onclick="switchNav(document.getElementById('nav-home'), 'tab-home')">←</div>
+        <h1>Notification Feed</h1>
+        <div class="more-menu" id="more-notif-menu">
+          <div style="cursor:pointer; padding:6px; font-size:24px; color:#828F9E; font-weight:800; line-height:1;" onclick="toggleMoreMenu(event)">⋮</div>
+          <div class="more-dropdown" id="notif-dropdown">
+            <div class="more-item" onclick="clearNotifs()">Clear All Alerts</div>
+          </div>
+        </div>
+      </div>
+      <div id="full-notif-list" style="padding-top: 10px;">
+        <!-- Firebase notifications will populate here -->
+      </div>
+    </div>
+
+    <!-- POSTS TAB -->
+    <div id="tab-bookings" class="page">
+      <div class="page-header">
+        <div class="back-arrow" onclick="switchNav(document.getElementById('nav-home'), 'tab-home')">←</div>
+        <h1>My Posts</h1>
+        <div></div>
+      </div>
+      <div class="booking-tabs" id="pipeline-tabs">
+        <div class="btab active" onclick="filterJobs('all', this)">All</div>
+        <div class="btab" onclick="filterJobs('complete', this)">Complete</div>
+        <div class="btab" onclick="filterJobs('incomplete', this)">Incomplete</div>
+      </div>
+      <div id="bookings-list" style="padding: 0 24px;"></div>
+    </div>
+
+    <!-- POST TAB -->
+    <div id="tab-post" class="page">
+      <div class="page-header">
+        <div class="back-arrow" onclick="switchNav(document.getElementById('nav-home'), 'tab-home')">←</div>
+        <h1>Post Job</h1>
+        <div></div>
+      </div>
+      <div class="form-wrap">
+        <div class="cfg-card">
+          <div class="cfg-head"><h4>Job Title</h4></div>
+          <div class="cfg-val"><input type="text" id="post-title" placeholder="e.g. PVC False Ceiling Work"></div>
+        </div>
+        <div class="cfg-card">
+          <div class="cfg-head"><h4>Job Description</h4></div>
+          <div class="cfg-val"><textarea id="post-desc" rows="2" placeholder="Work requirements..."></textarea></div>
+        </div>
+        <div class="cfg-card">
+          <div class="cfg-head"><h4>Site Photos</h4><button class="cfg-btn" onclick="document.getElementById('post-image-input').click()">Add</button></div>
+          <div class="cfg-val">
+            <input type="file" id="post-image-input" accept="image/*" style="display:none;" onchange="handleJobImage(this)">
+            <div id="post-image-preview" style="display:none;">
+              <img id="post-img-tag" src="" style="width:100%; border-radius:12px; height:140px; object-fit:cover; margin-top:10px;">
+              <button onclick="removeJobImage()" style="margin-top:8px; color:#DC2626; border:none; background:none; font-weight:800; font-size:11px;">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="cfg-card">
+          <div class="cfg-head"><h4>Location Details</h4></div>
+          <div class="cfg-val">
+            <select id="post-district" style="margin-bottom: 12px;">
+              <option value="" disabled selected>Select District</option>
+              <option value="Ariyalur">Ariyalur</option><option value="Chengalpattu">Chengalpattu</option><option value="Chennai">Chennai</option><option value="Coimbatore">Coimbatore</option><option value="Cuddalore">Cuddalore</option><option value="Dharmapuri">Dharmapuri</option><option value="Dindigul">Dindigul</option><option value="Erode">Erode</option><option value="Kallakurichi">Kallakurichi</option><option value="Kanchipuram">Kanchipuram</option><option value="Kanyakumari">Kanyakumari</option><option value="Karur">Karur</option><option value="Krishnagiri">Krishnagiri</option><option value="Madurai">Madurai</option><option value="Mayiladuthurai">Mayiladuthurai</option><option value="Nagapattinam">Nagapattinam</option><option value="Namakkal">Namakkal</option><option value="Nilgiris">Nilgiris</option><option value="Perambalur">Perambalur</option><option value="Pudukkottai">Pudukkottai</option><option value="Ramanathapuram">Ramanathapuram</option><option value="Ranipet">Ranipet</option><option value="Salem">Salem</option><option value="Sivaganga">Sivaganga</option><option value="Tenkasi">Tenkasi</option><option value="Thanjavur">Thanjavur</option><option value="Theni">Theni</option><option value="Thoothukudi">Thoothukudi</option><option value="Tiruchirappalli">Tiruchirappalli</option><option value="Tirunelveli">Tirunelveli</option><option value="Tirupathur">Tirupathur</option><option value="Tiruppur">Tiruppur</option><option value="Tiruvallur">Tiruvallur</option><option value="Tiruvannamalai">Tiruvannamalai</option><option value="Tiruvarur">Tiruvarur</option><option value="Vellore">Vellore</option><option value="Viluppuram">Viluppuram</option><option value="Virudhunagar">Virudhunagar</option>
+            </select>
+            <input type="text" id="post-area-name" placeholder="Enter Area Name (e.g. T.Nagar)" style="margin-bottom: 12px;">
+            <input type="number" id="post-phone" placeholder="WhatsApp Number" oninput="if(this.value.length>10)this.value=this.value.slice(0,10)">
+          </div>
+        </div>
+        <div class="cfg-card">
+          <div class="cfg-head"><h4>Work Area & Type</h4></div>
+          <div class="cfg-val">
+            <input type="number" id="post-sqft" placeholder="Sq.ft Area" oninput="calculateFee()">
+            <div style="margin-top:10px; display:flex; align-items:center; gap:10px;">
+              <input type="checkbox" id="post-feat" onchange="calculateFee()" style="width:18px; height:18px;">
+              <label style="font-size:12px; font-weight:800;">Featured Job (+₹199)</label>
+            </div>
+          </div>
+        </div>
+        <div style="margin: 20px 0 12px; padding: 16px; background: linear-gradient(135deg, #098E6E, #14B8A6); color: #fff; border-radius: 20px; box-shadow: 0 4px 15px rgba(9, 142, 110, 0.15); text-align: center;">
+          <div style="font-size: 10px; font-weight: 800; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Registration Fee</div>
+          <div style="font-size: 28px; font-weight: 800; letter-spacing: -1px;">₹<span id="post-calculated-fee">0</span></div>
+        </div>
+        <button class="btn-dark" onclick="confirmPost()" style="margin-bottom: 40px; padding: 14px; font-size: 14px; border-radius: 16px;">Pay & Post Requirement</button>
+      </div>
+    </div>
+
+    <!-- PROFILE TAB (New Premium Layout) -->
+    <div id="tab-profile" class="page">
+      <div class="page-header" style="margin-bottom:0;">
+        <div class="back-arrow" onclick="switchNav(document.getElementById('nav-home'), 'tab-home')">←</div>
+        <h1>Account Settings</h1>
+        <div></div>
+      </div>
+
+      <div style="padding: 24px;">
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:30px;">
+          <img src="" id="prof-avatar-page" style="width:70px; height:70px; border-radius:22px; background:#E2E8F0; object-fit:cover;">
+          <div>
+            <h2 id="prof-name-text" style="font-size:18px; font-weight:800; color:var(--text-dark);">Contractor Name</h2>
+            <p style="font-size:12px; color:var(--text-muted); font-weight:600; margin-top:2px;">Business Partner since February 2024</p>
+          </div>
+        </div>
+
+        <div class="premium-banner">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; opacity:0.9;">Business Status</span>
+            <span style="font-size:18px; font-weight:800;">ACTIVE</span>
+          </div>
+          <h3 id="prof-validity" style="font-size:22px; font-weight:800; margin-bottom:4px;">Validity...</h3>
+          <p style="font-size:12px; font-weight:600;">Authorized to post global work orders</p>
+        </div>
+
+        <div class="prof-list-item" onclick="switchNav(null, 'tab-profile-edit')">
+          <div class="pli-left">
+            <div class="pli-icon" style="background:#E2F5EF; color:#098E6E;">
+               <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="pli-txt">My Business Profile</div>
+          </div>
+          <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="prof-list-item" onclick="switchNav(null, 'tab-pay-history')">
+          <div class="pli-left">
+            <div class="pli-icon" style="background:#FEF3C7; color:#F59E0B;">
+               <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            </div>
+            <div class="pli-txt">Order History</div>
+          </div>
+          <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="prof-list-item" onclick="renewPlan()">
+          <div class="pli-left">
+            <div class="pli-icon" style="background:#E0E7FF; color:#4F46E5;">
+               <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M11 3l-4 6 5 12 5-12-4-6"/></svg>
+            </div>
+            <div class="pli-txt">Extend Subscription</div>
+          </div>
+          <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="prof-list-item" onclick="switchNav(null, 'tab-privacy')">
+          <div class="pli-left">
+            <div class="pli-icon" style="background:#F1F5F9; color:var(--text-dark);">
+               <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div class="pli-txt">Support & FAQ</div>
+          </div>
+          <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="prof-list-item" onclick="switchNav(null, 'tab-app-settings')">
+          <div class="pli-left">
+            <div class="pli-icon" style="background:#F1F5F9; color:var(--text-dark);">
+               <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
+            <div class="pli-txt">Settings</div>
+          </div>
+          <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="prof-list-item" style="border-color:#FEE2E2; margin-top:20px;" onclick="logout()">
+          <div class="pli-left">
+            <div class="pli-icon" style="background:#FEE2E2; color:#DC2626;">
+               <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </div>
+            <div class="pli-txt" style="color:#DC2626;">Logout Account</div>
+          </div>
+          <svg class="pli-arrow" style="stroke:#DC2626;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        
+        <div style="text-align:center; padding:20px; cursor:pointer;" onclick="showToast('Feature Coming Soon')">
+          <p style="font-size:12px; color:#DC2626; font-weight:800;">Terminate My Account</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-profile-edit" class="page">
+      <div class="page-header" style="margin-bottom:0;">
+        <div class="back-arrow" onclick="switchNav(null, 'tab-profile')">←</div>
+        <h1>Business Info</h1>
+        <div></div>
+      </div>
+      <div style="padding:24px;">
+         <div style="text-align:center; margin-bottom:30px;">
+           <div style="position:relative; display:inline-block;">
+             <img src="" id="edit-contractor-img" style="width:100px; height:100px; border-radius:30px; background:#E2E8F0; object-fit:cover; border:4px solid #fff; box-shadow:0 10px 20px rgba(0,0,0,0.1);">
+             <button onclick="document.getElementById('edit-c-img-input').click()" style="position:absolute; bottom:-10px; right:-10px; width:36px; height:36px; border-radius:12px; border:none; background:var(--primary); color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.2);">📸</button>
+           </div>
+           <input type="file" id="edit-c-img-input" accept="image/*" style="display:none;" onchange="handleContractorPhoto(this)">
+         </div>
+         <div class="cfg-card">
+           <div class="cfg-head"><h4>Business Name</h4></div>
+           <div class="cfg-val"><input type="text" id="edit-name-inp" style="background:#fff;"></div>
+         </div>
+         <div class="cfg-card">
+           <div class="cfg-head"><h4>Registered District</h4></div>
+           <div class="cfg-val">
+             <select id="edit-dist-inp" style="width:100%; background:#fff; border:none; font-size:14px; font-weight:700; outline:none; appearance:none;">
+                <option value="Ariyalur">Ariyalur</option><option value="Chengalpattu">Chengalpattu</option><option value="Chennai">Chennai</option><option value="Coimbatore">Coimbatore</option><option value="Cuddalore">Cuddalore</option><option value="Dharmapuri">Dharmapuri</option><option value="Dindigul">Dindigul</option><option value="Erode">Erode</option><option value="Kallakurichi">Kallakurichi</option><option value="Kanchipuram">Kanchipuram</option><option value="Kanyakumari">Kanyakumari</option><option value="Karur">Karur</option><option value="Krishnagiri">Krishnagiri</option><option value="Madurai">Madurai</option><option value="Mayiladuthurai">Mayiladuthurai</option><option value="Nagapattinam">Nagapattinam</option><option value="Namakkal">Namakkal</option><option value="Nilgiris">Nilgiris</option><option value="Perambalur">Perambalur</option><option value="Pudukkottai">Pudukkottai</option><option value="Ramanathapuram">Ramanathapuram</option><option value="Ranipet">Ranipet</option><option value="Salem">Salem</option><option value="Sivaganga">Sivaganga</option><option value="Tenkasi">Tenkasi</option><option value="Thanjavur">Thanjavur</option><option value="Theni">Theni</option><option value="Thoothukudi">Thoothukudi</option><option value="Tiruchirappalli">Tiruchirappalli</option><option value="Tirunelveli">Tirunelveli</option><option value="Tirupathur">Tirupathur</option><option value="Tiruppur">Tiruppur</option><option value="Tiruvallur">Tiruvallur</option><option value="Tiruvannamalai">Tiruvannamalai</option><option value="Tiruvarur">Tiruvarur</option><option value="Vellore">Vellore</option><option value="Viluppuram">Viluppuram</option><option value="Virudhunagar">Virudhunagar</option>
+             </select>
+           </div>
+         </div>
+         <button class="btn-dark" onclick="saveContractorProfile()" style="width:100%;">Save Professional Updates</button>
+      </div>
+    </div>
+
+    <div id="tab-pay-history" class="page">
+      <div class="page-header">
+        <div class="back-arrow" onclick="switchNav(null, 'tab-profile')">←</div>
+        <h1>Payment Ledger</h1>
+        <div></div>
+      </div>
+      <div id="contractor-pay-list" style="padding:24px;"></div>
+    </div>
+
+    <!-- PRIVACY TAB -->
+    <div id="tab-privacy" class="page">
+      <div class="page-header">
+        <div class="back-arrow" onclick="switchNav(null, 'tab-profile')">←</div>
+        <h1>Security</h1>
+        <div></div>
+      </div>
+      <div style="padding:24px;">
+         <div class="booking-card" style="margin:0 0 12px 0;">
+            <div style="padding:16px; display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-weight:700;">Account Protection</div>
+              <input type="checkbox" checked>
+            </div>
+         </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="tab-app-settings" class="page">
+      <div class="page-header">
+        <div class="back-arrow" onclick="switchNav(null, 'tab-profile')">←</div>
+        <h1>App Settings</h1>
+        <div></div>
+      </div>
+      <div style="padding:24px;">
+         <div class="booking-card" style="margin:0 0 12px 0;">
+            <div style="padding:16px; display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-weight:700;">Real-time Alerts</div>
+              <input type="checkbox" checked>
+            </div>
+         </div>
+      </div>
+    </div>
+
+    <!-- PILL NAV (Munadi iruntha style) -->
+    <nav class="bottom-nav">
+      <div class="b-nav-item active" id="nav-home" onclick="switchNav(this, 'tab-home')">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
+      </div>
+      <div class="b-nav-item" id="nav-bookings" onclick="switchNav(this, 'tab-bookings')">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>My Posts</span>
+      </div>
+      <div class="b-nav-item" id="nav-post" onclick="switchNav(this, 'tab-post')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span>Post Work</span>
+      </div>
+      <div class="b-nav-item" id="nav-profile" onclick="switchNav(this, 'tab-profile')">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>Account</span>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+    const u = JSON.parse(localStorage.getItem('tnpvc_user')) || { name: 'Contractor', subExp: new Date().toISOString() };
+    let isSubscribed = true;
+
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU",
+      authDomain: "tnpvc-connect-hub.firebaseapp.com",
+      projectId: "tnpvc-connect-hub",
+      storageBucket: "tnpvc-connect-hub.firebasestorage.app",
+      messagingSenderId: "919957830993",
+      appId: "1:919957830993:web:e1a2036a4258f683826770"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // REAL-TIME JOBS LISTENER (Global Sync)
+    db.collection("jobs")
+      .where("contractor", "==", u.name)
+      .onSnapshot((snapshot) => {
+        const jobs = [];
+        snapshot.forEach((doc) => jobs.push({ id: doc.id, ...doc.data() }));
+        window.myJobs = jobs;
+        renderDashboard();
+        if(document.getElementById('tab-bookings').classList.contains('active')) renderMyJobs();
+      });
+
+    function getJobs() { return window.myJobs || []; }
+
+    function switchNav(el, tabId) {
+      document.querySelectorAll('.b-nav-item').forEach(i => i.classList.remove('active'));
+      if(el && el.classList.contains('b-nav-item')) el.classList.add('active');
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const target = document.getElementById(tabId);
+      if(target) target.classList.add('active');
+      window.scrollTo(0, 0);
+      if(tabId === 'tab-notif') renderNotifs();
+      if(tabId === 'tab-bookings') renderMyJobs();
+      if(tabId === 'tab-profile') {
+        const avatar = u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=098E6E&color=fff`;
+        document.getElementById('prof-avatar-page').src = avatar;
+        document.getElementById('prof-name-text').textContent = u.name;
+      }
+      if(tabId === 'tab-profile-edit') {
+        document.getElementById('edit-name-inp').value = u.name;
+        document.getElementById('edit-dist-inp').value = u.district || "Chennai";
+        document.getElementById('edit-contractor-img').src = document.getElementById('home-avatar').src;
+      }
+      if(tabId === 'tab-pay-history') renderContractorPayments();
+    }
+
+    function handleContractorPhoto(input) {
+      if (input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          document.getElementById('edit-contractor-img').src = e.target.result;
+          u.photo = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function renderContractorPayments() {
+      const list = document.getElementById('contractor-pay-list');
+      list.innerHTML = `
+        <div class="booking-card" style="margin:0 0 12px 0;">
+          <div style="padding:16px;">
+            <div style="font-size:14px; font-weight:800; color:var(--primary); margin-bottom:4px;">Subscription Active</div>
+            <div style="font-size:12px; font-weight:700; color:var(--text-muted);">₹1,000 paid for 30 days access</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function saveContractorProfile() {
+      u.name = document.getElementById('edit-name-inp').value;
+      u.district = document.getElementById('edit-dist-inp').value;
+      localStorage.setItem('tnpvc_user', JSON.stringify(u));
+      showToast('Profile Updated Successfully');
+      setTimeout(() => window.location.reload(), 1000);
+    }
+
+    function renewPlan() {
+      const options = {
+        "key": "rzp_test_YourKeyHere",
+        "amount": 100000,
+        "currency": "INR",
+        "name": "TNPVC Connect Hub",
+        "description": "Subscription Renewal",
+        "handler": function (response){
+          const d = new Date(u.subExp);
+          d.setMonth(d.getMonth() + 1);
+          u.subExp = d.toISOString();
+          localStorage.setItem('tnpvc_user', JSON.stringify(u));
+          showToast("Renewal Confirmed!");
+          setTimeout(() => window.location.reload(), 2000);
+        },
+        "prefill": { "name": u.name },
+        "theme": { "color": "#098E6E" }
+      };
+      const rzp = new Razorpay(options);
+      rzp.open();
+    }
+
+    // ADMIN CONFIG LISTENER (Contractor)
+    db.collection('app_config').doc('promo').onSnapshot(doc => {
+      if(doc.exists) {
+        const data = doc.data();
+        const bannerImg = document.querySelector('.reg-banner img');
+        if(bannerImg && data.imageUrl) bannerImg.src = data.imageUrl;
+        const bannerTxt = document.querySelector('.reg-banner h1, .reg-banner h2, .reg-banner h3');
+        if(bannerTxt && data.title) bannerTxt.textContent = data.title;
+      }
+    });
+
+    function renderDashboard() {
+      const avatar = u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=098E6E&color=fff`;
+      if(document.getElementById('home-avatar')) document.getElementById('home-avatar').src = avatar;
+      if(document.getElementById('home-user-name')) document.getElementById('home-user-name').textContent = u.name;
+      if(document.getElementById('home-user-loc')) document.getElementById('home-user-loc').textContent = (u.district || "Tamil Nadu") + ", TN";
+      
+      const all = getJobs();
+      const finished = all.filter(j => j.status === 'Completed').length;
+      const spend = all.reduce((acc, j) => acc + parseInt(j.budget || 0), 0);
+      
+      if(document.getElementById('stat-total-posts')) document.getElementById('stat-total-posts').textContent = all.length;
+      if(document.getElementById('stat-finished-posts')) document.getElementById('stat-finished-posts').textContent = finished;
+      if(document.getElementById('stat-total-spend')) document.getElementById('stat-total-spend').textContent = spend.toLocaleString('en-IN');
+      
+      const diff = new Date(u.subExp).getTime() - new Date().getTime();
+      const days = Math.ceil(diff / (1000 * 3600 * 24));
+      const activeDays = days > 0 ? days : 0;
+      if(document.getElementById('stat-validity')) document.getElementById('stat-validity').textContent = activeDays + " Days";
+      if(document.getElementById('prof-validity')) document.getElementById('prof-validity').textContent = "Premium Valid: " + activeDays + " Days";
+      
+      if(activeDays <= 0) document.getElementById('sub-alert').classList.add('show');
+      else document.getElementById('sub-alert').classList.remove('show');
+
+      const homeList = document.getElementById('home-pipeline');
+      const latest = [...all].reverse().slice(0, 2);
+      homeList.innerHTML = latest.length ? latest.map(j => `
+        <div class="booking-card" style="margin:0 0 12px 0;">
+          <div style="padding:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div class="bc-title">${j.title}</div>
+              <div class="bc-status-pill" style="background:var(--primary-light); color:var(--primary);">${j.status}</div>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">📍 ${j.area} | Budget: ₹${j.budget}</p>
+          </div>
+        </div>
+      `).join('') : '<p style="font-size:12px; color:var(--text-muted); text-align:center; padding:20px;">No active pipelines.</p>';
+    }
+
+    let currentFilter = 'all';
+    function filterJobs(f, el) {
+      currentFilter = f;
+      if(el) {
+        document.querySelectorAll('#pipeline-tabs .btab').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+      }
+      renderMyJobs();
+    }
+
+    function renderMyJobs() {
+      let jobs = getJobs();
+      if(currentFilter === 'complete') jobs = jobs.filter(j => j.status === 'Completed');
+      if(currentFilter === 'incomplete') jobs = jobs.filter(j => j.status === 'Active');
+
+      const list = document.getElementById('bookings-list');
+      if(jobs.length === 0) { list.innerHTML = `<div style="text-align:center; padding:60px 20px;"><div style="font-size:40px; margin-bottom:10px;">📋</div><p style="color:var(--text-muted); font-weight:700;">No jobs found in this category.</p></div>`; return; }
+      
+      list.innerHTML = jobs.map(j => `
+        <div class="booking-card">
+          ${j.image ? `<img src="${j.image}" style="width:100%; height:160px; object-fit:cover;">` : ''}
+          <div style="padding:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div class="bc-title">${j.title}</div>
+              <div class="bc-status-pill" style="background:#E2F5EF; color:#098E6E;">${j.status}</div>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:5px;">📍 ${j.area}, ${j.district} | ${j.sqft} sqft</p>
+            <p style="font-size:15px; font-weight:800; color:var(--primary); margin-top:10px;">Platform Fee: ₹${j.budget}</p>
+            ${j.status === 'Active' ? `<button onclick="closeJob('${j.id}')" style="margin-top:16px; width:100%; padding:14px; border:none; background:#059669; color:#fff; border-radius:16px; font-weight:800; cursor:pointer;">✓ Mark as Work Completed</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function closeJob(id) {
+       if(!confirm("Confirm work completion?")) return;
+       db.collection("jobs").doc(id).update({ status: 'Completed' })
+         .then(() => showToast("Work Status Updated!"));
+    }
+
+    function calculateFee() {
+      const sqft = document.getElementById('post-sqft').value || 0;
+      const feat = document.getElementById('post-feat').checked;
+      let total = sqft * 1;
+      if(feat) total += 199;
+      document.getElementById('post-calculated-fee').textContent = total;
+    }
+
+    function confirmPost() {
+      const title = document.getElementById('post-title').value;
+      const area = document.getElementById('post-area-name').value;
+      const phone = document.getElementById('post-phone').value;
+      const sqft = document.getElementById('post-sqft').value;
+      const fee = document.getElementById('post-calculated-fee').textContent;
+
+      if(!title || !area || !phone || !sqft) { showToast("Enter all details!"); return; }
+
+      openPayModal(fee, () => {
+        db.collection("jobs").add({
+          title, district: document.getElementById('post-district').value, area, phone, sqft, budget: fee,
+          image: jobImageData, status: 'Active', contractor: u.name, date: new Date().toISOString()
+        }).then(() => {
+          showToast("Work Posted Globally!");
+          switchNav(document.getElementById('nav-bookings'), 'tab-bookings');
+        });
+      });
+    }
+
+    function renewPlan() {
+      openPayModal(1000, () => {
+        let uData = JSON.parse(localStorage.getItem('tnpvc_user')) || u;
+        let d = new Date(uData.subExp || new Date());
+        if(d < new Date()) d = new Date();
+        d.setDate(d.getDate() + 30);
+        uData.subExp = d.toISOString();
+        localStorage.setItem('tnpvc_user', JSON.stringify(uData));
+        u.subExp = uData.subExp;
+        showToast("Plan Extended Successfully!");
+        renderDashboard();
+      });
+    }
+
+    // REAL PAYMENT GATEWAY (Razorpay SDK Implementation)
+    function openPayModal(amt, cb) {
+      if(amt <= 0) { if(cb) cb(); return; }
+      
+      const options = {
+        "key": "rzp_test_placeholder", // REPLACE WITH YOUR REAL RAZORPAY KEY ID
+        "amount": amt * 100, // Amount in paise (e.g. 1000 INR = 100000 paise)
+        "currency": "INR",
+        "name": "TNPVC Connect Hub",
+        "description": "Order for Platform Access/Job Post",
+        "image": "https://ui-avatars.com/api/?name=TNPVC&background=098E6E&color=fff",
+        "handler": function (response) {
+          // This fires AFTER successful payment
+          showToast("Payment Successful! Ref: " + response.razorpay_payment_id);
+          if(cb) cb();
+        },
+        "prefill": {
+          "name": u.name,
+          "email": u.email || "user@example.com",
+          "contact": u.phone || ""
+        },
+        "notes": {
+          "address": "TNPVC Connect Hub HQ"
+        },
+        "theme": {
+          "color": "#098E6E"
+        }
+      };
+      
+      const rzp = new Razorpay(options);
+      
+      rzp.on('payment.failed', function (response){
+        alert("Payment Failed! " + response.error.description);
+      });
+
+      rzp.open();
+    }
+    
+    // Fallback for manual close if modal existed (not needed for RZP but keeping for compatibility)
+    function closePayModal() { 
+      // Razorpay provides its own modal UI
+    }
+
+    let jobImageData = "";
+    function handleJobImage(input) {
+      if (input.files[0]) {
+        const r = new FileReader();
+        r.onload = e => { jobImageData = e.target.result; document.getElementById('post-img-tag').src = jobImageData; document.getElementById('post-image-preview').style.display = 'block'; };
+        r.readAsDataURL(input.files[0]);
+      }
+    }
+    function removeJobImage() { jobImageData = ""; document.getElementById('post-image-preview').style.display = 'none'; }
+    function showToast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+    function logout() { if(confirm("Logout?")) { localStorage.removeItem('tnpvc_user'); window.location.href = 'index.html'; } }
+
+    // REAL-TIME NOTIFICATION LISTENER
+    db.collection("notifications")
+      .where("contractor", "==", u.name)
+      .onSnapshot((snapshot) => {
+        const notifs = [];
+        snapshot.forEach((doc) => notifs.push({ id: doc.id, ...doc.data() }));
+        window.activeNotifs = notifs.sort((a,b) => new Date(b.date) - new Date(a.date));
+        checkNotifDot();
+        if(document.getElementById('tab-notif').classList.contains('active')) renderNotifs();
+      });
+
+    function checkNotifDot() {
+      const hasUnread = (window.activeNotifs || []).some(x => !x.read);
+      document.getElementById('bell-dot').style.display = hasUnread ? 'block' : 'none';
+    }
+
+    function renderNotifs() {
+      const list = document.getElementById('full-notif-list');
+      const n = window.activeNotifs || [];
+      if(n.length === 0) {
+        list.innerHTML = `<div style="text-align:center; padding:100px 20px;"><div style="font-size:50px; margin-bottom:12px;">🔔</div><p style="color:var(--text-muted); font-weight:700;">Your activity feed is empty.</p></div>`;
+        return;
+      }
+      list.innerHTML = n.map(x => `
+        <div class="notif-item" onclick="markRead('${x.id}')">
+          <div class="ni-icon">👷</div>
+          <div class="ni-content">
+            <div class="ni-title">${x.title}</div>
+            <div class="ni-body">${x.body}</div>
+            <span class="ni-time">${new Date(x.date).toLocaleString()}</span>
+          </div>
+          ${!x.read ? '<div style="width:10px; height:10px; background:var(--primary); border-radius:50%;"></div>' : ''}
+        </div>
+      `).join('');
+    }
+
+    function markRead(id) {
+       db.collection("notifications").doc(id).update({ read: true });
+    }
+
+    function clearNotifs() {
+      if(!confirm("Are you sure you want to clear all notifications?")) return;
+      const batch = db.batch();
+      (window.activeNotifs || []).forEach(notif => {
+         batch.delete(db.collection("notifications").doc(notif.id));
+      });
+      batch.commit().then(() => {
+        showToast("Notifications Cleared");
+        if(document.getElementById('notif-dropdown')) document.getElementById('notif-dropdown').classList.remove('show');
+      });
+    }
+
+    function toggleMoreMenu(e) {
+      if(e) e.stopPropagation();
+      const drop = document.getElementById('notif-dropdown');
+      drop.classList.toggle('show');
+    }
+
+    // Close menu on outside click
+    window.onclick = function(e) {
+      if(!e.target.closest('.more-menu')) {
+        const drop = document.getElementById('notif-dropdown');
+        if(drop) drop.classList.remove('show');
+      }
+    }
+
+    renderDashboard();
+    calculateFee();
+
+    // PROMOTIONS LISTENER (Cards)
+    db.collection('promotions').orderBy('createdAt', 'desc').onSnapshot(snap => {
+      const scroller = document.querySelector('.ad-slider');
+      if(!scroller) return;
+      scroller.innerHTML = snap.docs.map(doc => {
+        const p = doc.data();
+        return `<div class="ad-card" style="background-image: url('${p.imageUrl}')">
+          <h3>${p.title}</h3>
+          <p>Verified Partner Promotion</p>
+        </div>`;
+      }).join('') + `
+        <div class="ad-card ad-1">
+          <h3>TNPVC Prime</h3>
+          <p>Get exclusive access to top-tier verified workers.</p>
+          <div class="ad-card-badge">HOT</div>
+        </div>
+        <div class="ad-card ad-2">
+          <h3>Safety First</h3>
+          <p>Guidelines for on-site safety and professional conduct.</p>
+        </div>
+      `;
+    });
+  </script>
+</body>
+
+</html>

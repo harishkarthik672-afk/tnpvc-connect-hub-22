@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --primary: #098E6E;
+    --primary-light: #E2F5EF;
+    --bg: #F8FAFC;
+    --card: #FFFFFF;
+    --text-dark: #1E293B;
+    --text-muted: #64748B;
+    --border: #F1F5F9;
+    --black: #0F172A;
+  }
+  
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text-dark); -webkit-tap-highlight-color: transparent; }
+
+  .app-container { max-width: 480px; margin: 0 auto; background: var(--bg); min-height: 100vh; position: relative; padding-bottom: 90px; overflow-x: hidden; }
+
+  #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--black); color: #fff; padding: 12px 24px; border-radius: 100px; font-size: 14px; font-weight: 700; z-index: 9999; opacity: 0; transition: 0.3s; pointer-events: none; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .page { display: none; padding-bottom: 24px; animation: fadeIn 0.4s ease-out; }
+  .page.active { display: block !important; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .bell-btn { width: 44px; height: 44px; border-radius: 50%; background: #fff; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; }
+  .bell-btn svg { width: 22px; height: 22px; stroke: var(--text-dark); stroke-width: 2.2; fill: none; }
+  .bell-dot { position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; background: #EF4444; border-radius: 50%; border: 2px solid #fff; }
+
+  /* Header Styles (Synced) */
+  .header-wrap { padding: 16px 16px 0px; background: #fff; }
+  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .user-greet { display: flex; align-items: center; gap: 14px; }
+  .avatar { width: 48px; height: 48px; border-radius: 50%; background: #E5E7EB; object-fit: cover; border: 1.5px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+  .greet-text h3 { font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 2px; }
+  .greet-text p { font-size: 12px; font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+
+  /* Search */
+  .search-wrap { position: relative; margin-bottom: 24px; }
+  .search-wrap input { width: 100%; background: #F8FAFC; border: 1.5px solid var(--border); padding: 16px 50px; border-radius: 18px; font-size: 14px; font-weight: 700; outline: none; transition: 0.3s; color: var(--text-dark); }
+  .search-wrap input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 4px 15px rgba(9,142,110,0.08); }
+  .search-wrap .sh-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; stroke: var(--text-muted); stroke-width: 2.2; fill: none; }
+  .search-wrap input::placeholder { color: var(--text-muted); font-weight: 600; }
+
+  /* Promo Cards */
+  .section-hdr { font-size: 15px; font-weight: 800; margin: 0 16px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .promo-scroll { display: flex; gap: 14px; overflow-x: auto; padding: 0 16px 20px; margin: 0 -16px 0px; scrollbar-width: none; }
+  .promo-scroll::-webkit-scrollbar { display: none; }
+  .p-card { flex: 0 0 82%; border-radius: 24px; height: 160px; padding: 24px; position: relative; overflow: hidden; background-size: cover; background-position: center; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08); }
+  .p-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent); z-index: 1; }
+  .p-card.no-txt::before { display: none; }
+  .p-card h4 { font-size: 18px; font-weight: 800; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+  .p-card p { font-size: 12px; z-index: 2; opacity: 0.9; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+  .p-card-tag { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); padding: 4px 10px; border-radius: 100px; font-size: 9px; font-weight: 800; z-index: 2; border: 1px solid rgba(255,255,255,0.1); text-transform: uppercase; }
+
+  /* Stats Row (Modern Round Style) */
+  .stats-row { display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 20px; margin: 0 -16px 24px; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+  .stats-row::-webkit-scrollbar { display: none; }
+  .stat-pill { flex: 0 0 145px; background: var(--card); border: 1.5px solid var(--border); border-radius: 24px; padding: 16px 20px; box-shadow: 0 6px 15px rgba(0, 0, 0, 0.03); display: flex; flex-direction: column; justify-content: center; transition: 0.2s; }
+  .stat-pill:active { transform: scale(0.96); }
+  .stat-val { font-size: 18px; font-weight: 800; color: var(--text-dark); margin-bottom: 2px; }
+  .stat-lbl { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Job List */
+  .job-item { background: #fff; border: 1.5px solid var(--border); padding: 14px; border-radius: 20px; display: flex; gap: 14px; margin: 0 16px 12px; cursor: pointer; transition: 0.2s; }
+  .job-item:active { transform: scale(0.98); }
+  .j-img { width: 70px; height: 70px; border-radius: 16px; background: #f1f5f9; object-fit: cover; flex-shrink: 0; }
+  .j-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+  .j-title { font-size: 15px; font-weight: 800; color: var(--text-dark); margin-top: 2px; }
+  .j-meta { display: flex; justify-content: space-between; align-items: center; }
+  .j-price { color: var(--primary); font-weight: 800; font-size: 14px; }
+  .j-loc { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+
+  /* Bottom Nav */
+  .bot-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; height: 75px; background: #fff; border-top: 1.5px solid var(--border); display: flex; align-items: center; justify-content: space-around; padding-bottom: 15px; z-index: 5000; box-shadow: 0 -4px 20px rgba(0,0,0,0.03); }
+  .n-item { display: flex; align-items: center; justify-content: center; border: none; background: none; cursor: pointer; height: 44px; padding: 0 12px; border-radius: 100px; transition: 0.35s ease; overflow: hidden; }
+  .n-item svg { width: 22px; height: 22px; stroke: var(--text-muted); stroke-width: 2.2; fill: none; transition: 0.25s; }
+  .n-item span { font-size: 13px; font-weight: 800; color: #fff; max-width: 0; opacity: 0; transition: 0.35s; white-space: nowrap; margin-left: 0; }
+  .n-item.active { background: var(--primary); padding: 0 18px; }
+  .n-item.active svg { stroke: #fff; }
+  .n-item.active span { max-width: 100px; opacity: 1; margin-left: 8px; }
+
+  /* Premium Profile Styles */
+  .prof-list-item { background: #fff; border: 1.5px solid var(--border); padding: 16px 20px; border-radius: 18px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
+  .prof-list-item:active { background: #F8FAFC; transform: scale(0.98); }
+  .pli-left { display: flex; align-items: center; gap: 14px; }
+  .pli-icon { width: 40px; height: 40px; border-radius: 12px; background: #F1F5F9; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .pli-txt { font-size: 14px; font-weight: 700; color: var(--text-dark); }
+  .pli-arrow { width: 20px; height: 20px; stroke: #94A3B8; stroke-width: 2.5; fill: none; }
+  .premium-banner { background: linear-gradient(135deg, #098E6E, #14B8A6); border-radius: 24px; padding: 24px; color: #fff; position: relative; overflow: hidden; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(9,142,110,0.15); }
+  .premium-banner::after { content: '💎'; position: absolute; right: -10px; bottom: -10px; font-size: 80px; opacity: 0.1; }
+
+  .page-header { display: flex; align-items: center; justify-content: space-between; padding: 24px 20px 16px; }
+  .page-header h1 { font-size: 20px; font-weight: 800; }
+  .btn-circle { width: 44px; height: 44px; border-radius: 14px; background: #fff; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+  /* Notif Style */
+  .notif-card { background:#fff; border:1.5px solid var(--border); border-radius:20px; padding:16px; margin:0 20px 12px; display:flex; gap:14px; align-items:center; }
+  .nc-icon { width:44px; height:44px; border-radius:12px; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .nc-body { flex:1; }
+  .nc-title { font-size:14px; font-weight:800; color:var(--text-dark); }
+  .nc-desc { font-size:12px; color:var(--text-muted); line-height:1.4; }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div class="app-container">
+
+  <!-- HOME TAB -->
+  <div id="tab-home" class="page active">
+    <div class="header-wrap">
+      <div class="header-top">
+        <div class="user-greet">
+          <img src="" id="hdr-avatar" class="avatar">
+          <div class="greet-text">
+            <h2 id="hdr-name" style="font-size: 18px; font-weight: 800; color: var(--text-dark);">User</h2>
+            <p><span>📍</span> <span id="hdr-loc">District, TN</span></p>
+          </div>
+        </div>
+        <div class="bell-btn" onclick="switchTab('tab-notif')">
+          <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <div id="bell-dot" class="bell-dot" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <svg class="sh-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search for jobs or projects...">
+      </div>
+    </div>
+
+    <div class="section-hdr"><h2>New Opportunities</h2></div>
+    <div class="promo-scroll">
+      <div class="p-card no-txt" style="background-image: url('bbbbb.jpg');"></div>
+      <div class="p-card" style="background: linear-gradient(135deg, #098E6E, #16202A);">
+        <div class="p-card-tag">NEW</div>
+        <h4>Win 1-Month Premium</h4>
+        <p>Complete 5 works this week to unlock free premium for next month!</p>
+      </div>
+      <div class="p-card no-txt" style="background-image: url('aaaa.jpg');"></div>
+    </div>
+
+    <div class="section-hdr"><h2>Performance Stats</h2></div>
+    <div class="stats-row">
+      <div class="stat-pill" style="border-left: 4px solid #098E6E;">
+        <div class="stat-lbl">Works Done</div>
+        <div class="stat-val" id="stat-works">0</div>
+      </div>
+      <div class="stat-pill" style="border-left: 4px solid #F59E0B;">
+        <div class="stat-lbl">Earned</div>
+        <div class="stat-val">₹<span id="stat-earned">0</span></div>
+      </div>
+      <div class="stat-pill" style="border-left: 4px solid #6366F1;">
+        <div class="stat-lbl">Rating</div>
+        <div class="stat-val">4.8 ★</div>
+      </div>
+      <div class="stat-pill" style="border-left: 4px solid #EF4444;">
+        <div class="stat-lbl">Validity</div>
+        <div class="stat-val" id="stat-validity-pill">0 Days</div>
+      </div>
+    </div>
+
+    <div class="section-hdr"><h2>Best Promotions</h2></div>
+    <div class="promo-scroll">
+      <div class="p-card no-txt" style="background-image: url('ccccc.jpeg');"></div>
+      <div class="p-card" style="background: linear-gradient(135deg, #F59E0B, #DC2626);">
+        <div class="p-card-tag">OFFER</div>
+        <h4>Heavy Drill Kit</h4>
+        <p>Get professional drills at 30% discount. Limited stock only.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION TAB -->
+  <div id="tab-notif" class="page">
+    <div class="page-header">
+      <div class="btn-circle" onclick="switchTab('tab-home')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <h1>Notifications</h1>
+      <div style="width:44px;"></div>
+    </div>
+    <div id="notif-list" style="padding-top:10px;">
+      <div style="text-align: center; padding: 100px 20px;">
+        <div style="font-size: 50px; margin-bottom: 24px;">🔔</div>
+        <h3 style="font-size: 18px; font-weight: 800; color: var(--text-dark);">No New Alerts</h3>
+        <p style="color:var(--text-muted); font-size:14px; margin-top:8px;">Well notify you when new jobs or updates arrive.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDER TAB -->
+  <div id="tab-orders" class="page">
+    <div class="page-header">
+      <div class="btn-circle" onclick="switchTab('tab-home')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <h1>Available Orders</h1>
+      <div style="width:44px;"></div>
+    </div>
+    <div id="job-feed" style="margin-top: 10px;">
+      <div style="text-align:center; padding:100px 20px;">
+        <div style="font-size:32px; animation:spin 2s linear infinite;">⏳</div>
+        <p style="color:var(--text-muted); font-weight:700; margin-top:12px;">Connecting to marketplace...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOOKINGS TAB -->
+  <div id="tab-bookings-list" class="page">
+    <div class="page-header">
+      <div class="btn-circle" onclick="switchTab('tab-home')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <h1>My Bookings</h1>
+      <div style="width:44px;"></div>
+    </div>
+    <div id="booked-items" style="padding-top: 10px;">
+      <div style="text-align: center; padding: 100px 20px;">
+        <div style="font-size: 50px; margin-bottom: 24px;">📅</div>
+        <h3 style="font-size: 18px; font-weight: 800; color: var(--text-dark);">No Bookings Yet</h3>
+        <p style="color:var(--text-muted); font-size:14px; margin-top:8px;">Start booking orders from the marketplace.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE TAB (New Premium Layout) -->
+  <div id="tab-profile" class="page">
+    <div class="page-header" style="margin-bottom:0;">
+      <div class="btn-circle" onclick="switchTab('tab-home')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <h1>Account Settings</h1>
+      <div style="width:44px;"></div>
+    </div>
+
+    <div style="padding: 24px;">
+      <div style="display:flex; align-items:center; gap:16px; margin-bottom:30px;">
+        <img src="" id="prof-img-page" style="width:70px; height:70px; border-radius:22px; background:#E2E8F0; object-fit:cover;">
+        <div>
+          <h2 id="user-name-page" style="font-size:18px; font-weight:800; color:var(--text-dark);">User Name</h2>
+          <p style="font-size:12px; color:var(--text-muted); font-weight:600; margin-top:2px;">Labour Partner since March 2024</p>
+        </div>
+      </div>
+
+      <div class="premium-banner">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; opacity:0.9;">Premium Access</span>
+          <span style="font-size:18px; font-weight:800;">100%</span>
+        </div>
+        <h3 id="validity-page" style="font-size:22px; font-weight:800; margin-bottom:4px;">Valid for 30 Days</h3>
+        <p style="font-size:12px; font-weight:600;">Full access to global order marketplace</p>
+      </div>
+
+      <div class="prof-list-item" onclick="switchTab('tab-profile-edit')">
+        <div class="pli-left">
+          <div class="pli-icon" style="background:#E2F5EF; color:#098E6E;">
+             <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div class="pli-txt">My Profile Details</div>
+        </div>
+        <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="prof-list-item" onclick="switchTab('tab-pay-history')">
+        <div class="pli-left">
+          <div class="pli-icon" style="background:#FEF3C7; color:#F59E0B;">
+             <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          </div>
+          <div class="pli-txt">Payment History</div>
+        </div>
+        <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="prof-list-item" onclick="renewPlan()">
+        <div class="pli-left">
+          <div class="pli-icon" style="background:#E0E7FF; color:#4F46E5;">
+             <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M11 3l-4 6 5 12 5-12-4-6"/></svg>
+          </div>
+          <div class="pli-txt">Renew Monthly Plan</div>
+        </div>
+        <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="prof-list-item" onclick="switchTab('tab-privacy')">
+        <div class="pli-left">
+          <div class="pli-icon" style="background:#F1F5F9; color:var(--text-dark);">
+             <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <div class="pli-txt">Account Privacy</div>
+        </div>
+        <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="prof-list-item" onclick="switchTab('tab-app-settings')">
+        <div class="pli-left">
+          <div class="pli-icon" style="background:#F1F5F9; color:var(--text-dark);">
+             <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <div class="pli-txt">App Settings</div>
+        </div>
+        <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+
+      <div class="prof-list-item" style="border-color:#FEE2E2; margin-top:20px;" onclick="logout()">
+        <div class="pli-left">
+          <div class="pli-icon" style="background:#FEE2E2; color:#DC2626;">
+             <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </div>
+          <div class="pli-txt" style="color:#DC2626;">Log Out Safely</div>
+        </div>
+        <svg class="pli-arrow" style="stroke:#DC2626;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+
+      <div style="text-align:center; padding:20px; cursor:pointer;" onclick="showToast('Feature Coming Soon')">
+        <p style="font-size:12px; color:#DC2626; font-weight:800;">Delete Account Forever</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAVIGATION -->
+  <nav class="bot-nav">
+    <button class="n-item active" id="btn-nav-home" onclick="switchTab('tab-home', this)">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="n-item" id="btn-nav-orders" onclick="switchTab('tab-orders', this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Orders</span>
+    </button>
+    <button class="n-item" id="btn-nav-chat" onclick="switchTab('tab-bookings-list', this)">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>Booking</span>
+    </button>
+    <button class="n-item" id="btn-nav-profile" onclick="switchTab('tab-profile', this)">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profile</span>
+    </button>
+  </nav>
+
+  <!-- EDITS TAB -->
+  <div id="tab-profile-edit" class="page">
+    <div class="page-header">
+      <div class="btn-circle" onclick="switchTab('tab-profile')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <h1>My Details</h1>
+      <div style="width:44px;"></div>
+    </div>
+    <div style="padding:24px;">
+       <div style="text-align:center; margin-bottom:30px;">
+         <div style="position:relative; display:inline-block;">
+           <img src="" id="edit-img-preview" style="width:100px; height:100px; border-radius:30px; background:#E2E8F0; object-fit:cover; border:4px solid #fff; box-shadow:0 10px 20px rgba(0,0,0,0.1);">
+           <button onclick="document.getElementById('edit-img-input').click()" style="position:absolute; bottom:-10px; right:-10px; width:36px; height:36px; border-radius:12px; border:none; background:var(--primary); color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.2);">📸</button>
+         </div>
+         <input type="file" id="edit-img-input" accept="image/*" style="display:none;" onchange="handleEditPhoto(this)">
+       </div>
+       <div style="margin-bottom:20px;">
+         <label style="font-size:12px; font-weight:800; color:var(--text-muted); display:block; margin-bottom:8px;">FULL NAME</label>
+         <input type="text" id="edit-name" style="width:100%; padding:16px; border:1.5px solid var(--border); border-radius:18px; font-weight:700; outline:none; background:#fff;">
+       </div>
+       <div style="margin-bottom:20px;">
+         <label style="font-size:12px; font-weight:800; color:var(--text-muted); display:block; margin-bottom:8px;">SELECT DISTRICT</label>
+         <select id="edit-dist" style="width:100%; padding:16px; border:1.5px solid var(--border); border-radius:18px; font-weight:700; outline:none; background:#fff; appearance:none;">
+            <option value="Ariyalur">Ariyalur</option><option value="Chengalpattu">Chengalpattu</option><option value="Chennai">Chennai</option><option value="Coimbatore">Coimbatore</option><option value="Cuddalore">Cuddalore</option><option value="Dharmapuri">Dharmapuri</option><option value="Dindigul">Dindigul</option><option value="Erode">Erode</option><option value="Kallakurichi">Kallakurichi</option><option value="Kanchipuram">Kanchipuram</option><option value="Kanyakumari">Kanyakumari</option><option value="Karur">Karur</option><option value="Krishnagiri">Krishnagiri</option><option value="Madurai">Madurai</option><option value="Mayiladuthurai">Mayiladuthurai</option><option value="Nagapattinam">Nagapattinam</option><option value="Namakkal">Namakkal</option><option value="Nilgiris">Nilgiris</option><option value="Perambalur">Perambalur</option><option value="Pudukkottai">Pudukkottai</option><option value="Ramanathapuram">Ramanathapuram</option><option value="Ranipet">Ranipet</option><option value="Salem">Salem</option><option value="Sivaganga">Sivaganga</option><option value="Tenkasi">Tenkasi</option><option value="Thanjavur">Thanjavur</option><option value="Theni">Theni</option><option value="Thoothukudi">Thoothukudi</option><option value="Tiruchirappalli">Tiruchirappalli</option><option value="Tirunelveli">Tirunelveli</option><option value="Tirupathur">Tirupathur</option><option value="Tiruppur">Tiruppur</option><option value="Tiruvallur">Tiruvallur</option><option value="Tiruvannamalai">Tiruvannamalai</option><option value="Tiruvarur">Tiruvarur</option><option value="Vellore">Vellore</option><option value="Viluppuram">Viluppuram</option><option value="Virudhunagar">Virudhunagar</option>
+         </select>
+       </div>
+       <button class="btn-dark" onclick="saveProfile()" style="width:100%; padding:18px; border-radius:20px; border:none; background:var(--primary); color:#fff; font-weight:800; cursor:pointer;">Save Updates</button>
+    </div>
+  </div>
+
+  <!-- PAYMENTS TAB -->
+  <div id="tab-pay-history" class="page">
+    <div class="page-header">
+      <div class="btn-circle" onclick="switchTab('tab-profile')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <h1>Payments</h1>
+      <div style="width:44px;"></div>
+    </div>
+    <div id="pay-history-list" style="padding:24px;"></div>
+  </div>
+
+  <!-- PRIVACY TAB -->
+  <div id="tab-privacy" class="page">
+    <div class="page-header">
+      <div class="btn-circle" onclick="switchTab('tab-profile')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <h1>Security</h1>
+      <div style="width:44px;"></div>
+    </div>
+    <div style="padding:24px;">
+       <div class="notif-card" style="margin:0 0 12px 0;">
+          <div class="pli-txt">Enable Two-Factor (2FA)</div>
+          <input type="checkbox" checked style="width:20px; height:20px;">
+       </div>
+       <div class="notif-card" style="margin:0 0 12px 0;" onclick="showToast('Security Email Sent')">
+          <div class="pli-txt">Reset Access Password</div>
+          <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+       </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="tab-app-settings" class="page">
+    <div class="page-header">
+      <div class="btn-circle" onclick="switchTab('tab-profile')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <h1>App Settings</h1>
+      <div style="width:44px;"></div>
+    </div>
+    <div style="padding:24px;">
+       <div class="notif-card" style="margin:0 0 12px 0;">
+          <div class="pli-txt">Push Notifications</div>
+          <input type="checkbox" checked style="width:20px; height:20px;">
+       </div>
+       <div class="notif-card" style="margin:0 0 12px 0;">
+          <div class="pli-txt">Language: English</div>
+          <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+       </div>
+    </div>
+  </div>
+
+  <!-- PRIVACY TAB -->
+  <div id="tab-privacy" class="page">
+    <div class="page-header">
+      <div class="btn-circle" onclick="switchTab('tab-profile')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <h1>Security</h1>
+      <div style="width:44px;"></div>
+    </div>
+    <div style="padding:24px;">
+       <div class="notif-card" style="margin:0 0 12px 0;">
+          <div class="pli-txt">Enable Two-Factor (2FA)</div>
+          <input type="checkbox" checked style="width:20px; height:20px;">
+       </div>
+       <div class="notif-card" style="margin:0 0 12px 0;" onclick="showToast('Security Email Sent')">
+          <div class="pli-txt">Reset Access Password</div>
+          <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+       </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="tab-app-settings" class="page">
+    <div class="page-header">
+      <div class="btn-circle" onclick="switchTab('tab-profile')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+      <h1>App Settings</h1>
+      <div style="width:44px;"></div>
+    </div>
+    <div style="padding:24px;">
+       <div class="notif-card" style="margin:0 0 12px 0;">
+          <div class="pli-txt">Push Notifications</div>
+          <input type="checkbox" checked style="width:20px; height:20px;">
+       </div>
+       <div class="notif-card" style="margin:0 0 12px 0;">
+          <div class="pli-txt">Language: English</div>
+          <svg class="pli-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+       </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Initial Setup
+  const tnpvc_u = JSON.parse(localStorage.getItem('tnpvc_user'));
+  if(!tnpvc_u) window.location.replace('index.html');
+
+  // Firebase Init
+  const firebaseConfig = { apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU", authDomain: "tnpvc-connect-hub.firebaseapp.com", projectId: "tnpvc-connect-hub", storageBucket: "tnpvc-connect-hub.firebasestorage.app", messagingSenderId: "919957830993", appId: "1:919957830993:web:e1a2036a4258f683826770" };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // Populate UI
+  document.getElementById('hdr-name').textContent = tnpvc_u.name.split(' ')[0];
+  document.getElementById('hdr-loc').textContent = (tnpvc_u.district || "TN") + ", Tamil Nadu";
+  const avatar = tnpvc_u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(tnpvc_u.name)}&background=098E6E&color=fff`;
+  document.getElementById('hdr-avatar').src = avatar;
+  document.getElementById('prof-img-page').src = avatar;
+  document.getElementById('user-name-page').textContent = tnpvc_u.name;
+
+  // Validity Calculation
+  if(tnpvc_u.validUntil) {
+    const diff = new Date(tnpvc_u.validUntil).getTime() - Date.now();
+    let days = Math.ceil(diff / (1000 * 3600 * 24));
+    if(days < 0) days = 0;
+    document.getElementById('validity-page').textContent = "Valid for " + days + " Days";
+    document.getElementById('stat-validity-pill').textContent = days + " Days";
+  }
+
+  // Placeholder for Works/Earnings
+  document.getElementById('stat-works').textContent = "0";
+  document.getElementById('stat-earned').textContent = "0";
+
+  // Tabs Switch 
+  function switchTab(tabId, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    
+    document.querySelectorAll('.n-item').forEach(n => n.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+    else if(document.getElementById('btn-nav-home')) {
+      const mapping = {'tab-home':'btn-nav-home','tab-orders':'btn-nav-orders','tab-bookings-list':'btn-nav-chat','tab-profile':'btn-nav-profile'};
+      const targetBtn = document.getElementById(mapping[tabId]);
+      if(targetBtn) targetBtn.classList.add('active');
+    }
+    window.scrollTo(0,0);
+    if(tabId === 'tab-orders') renderJobs();
+    if(tabId === 'tab-bookings-list') renderBookedHistory();
+    if(tabId === 'tab-notif') renderNotifs();
+    if(tabId === 'tab-profile-edit') {
+       document.getElementById('edit-name').value = tnpvc_u.name;
+       document.getElementById('edit-dist').value = tnpvc_u.district || "Chennai";
+       document.getElementById('edit-img-preview').src = document.getElementById('hdr-avatar').src;
+    }
+    if(tabId === 'tab-pay-history') renderPayments();
+  }
+
+  function handleEditPhoto(input) {
+    if (input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('edit-img-preview').src = e.target.result;
+        tnpvc_u.photo = e.target.result;
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
+  function renderPayments() {
+     const list = document.getElementById('pay-history-list');
+     list.innerHTML = `
+        <div class="notif-card" style="margin:0 0 12px 0;">
+            <div class="nc-icon">💳</div>
+            <div class="nc-body">
+              <div class="nc-title">Membership Activated</div>
+              <div class="nc-desc">₹1,000 paid via App</div>
+            </div>
+        </div>
+     `;
+  }
+
+  function saveProfile() {
+     tnpvc_u.name = document.getElementById('edit-name').value;
+     tnpvc_u.district = document.getElementById('edit-dist').value;
+     localStorage.setItem('tnpvc_user', JSON.stringify(tnpvc_u));
+     showToast('Profile updated!');
+     setTimeout(() => window.location.reload(), 1000);
+  }
+
+  function renewPlan() {
+    const options = {
+      "key": "rzp_test_YourKeyHere",
+      "amount": 100000,
+      "currency": "INR",
+      "name": "TNPVC Connect Hub",
+      "description": "Monthly Plan Renewal",
+      "handler": function (response){
+        const newUntil = new Date();
+        newUntil.setMonth(newUntil.getMonth() + 1);
+        tnpvc_u.validUntil = newUntil;
+        localStorage.setItem('tnpvc_user', JSON.stringify(tnpvc_u));
+        showToast("Renewal Successful!");
+        setTimeout(() => window.location.reload(), 2000);
+      },
+      "prefill": { "name": tnpvc_u.name, "contact": tnpvc_u.phone },
+      "theme": { "color": "#098E6E" }
+    };
+    const rzp = new Razorpay(options);
+    rzp.open();
+  }
+
+  function renderNotifs() {
+     const list = document.getElementById('notif-list');
+     // Adding some dummy notifs based on activity
+     const myBookings = JSON.parse(localStorage.getItem('my_booked_jobs') || '[]');
+     if(myBookings.length > 0) {
+        list.innerHTML = myBookings.reverse().map(b => `
+          <div class="notif-card">
+            <div class="nc-icon">✅</div>
+            <div class="nc-body">
+              <div class="nc-title">Order Confirmed</div>
+              <div class="nc-desc">You successfully booked: ${b.title}. Contractor will contact you soon.</div>
+            </div>
+          </div>
+        `).join('') + `
+          <div class="notif-card">
+            <div class="nc-icon">🎁</div>
+            <div class="nc-body">
+              <div class="nc-title">Welcome Bonus</div>
+              <div class="nc-desc">Complete your profile to get more orders in your area.</div>
+            </div>
+          </div>
+        `;
+     }
+  }
+
+  // Jobs Listener
+  db.collection("jobs").where("status", "==", "Active").onSnapshot(snap => {
+    window.allJobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+    window.jobs_cache = window.allJobs;
+    if(document.getElementById('tab-orders').classList.contains('active')) renderJobs();
+  });
+
+  function renderJobs() {
+    const feed = document.getElementById('job-feed');
+    const jobs = (window.jobs_cache || []).filter(j => j.district === tnpvc_u.district).reverse();
+    if(jobs.length === 0 && window.jobs_cache) {
+      feed.innerHTML = `<div style="text-align:center; padding:60px 20px; background:#fff; border-radius:24px; margin:20px; border:1.5px dashed #e2e8f0;"><div style="font-size:40px;">📍</div><h3 style="margin:10px 0 5px;">No Orders in ${tnpvc_u.district}</h3><p style="font-size:12px; color:#64748b;">Try checking other districts later.</p></div>`;
+      return;
+    }
+    if(!window.jobs_cache) return;
+    feed.innerHTML = jobs.map(j => `
+      <div class="job-item" onclick="openJob('${j.id}')">
+        <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=098E6E&color=fff'}">
+        <div class="j-info">
+          <div class="j-title">${j.title}</div>
+          <div class="j-meta">
+            <span class="j-price">₹${j.budget}</span>
+            <span class="j-loc">${j.area}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  let currentJobId = null;
+  function openJob(id) {
+    const job = (window.allJobs || []).find(j => j.id == id);
+    if(!job) return;
+    currentJobId = id;
+    document.getElementById('dt-title').textContent = job.title;
+    document.getElementById('dt-img').src = job.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(job.title)+'&background=098E6E&color=fff';
+    document.getElementById('dt-con').textContent = "Post by " + job.contractor;
+    document.getElementById('dt-val').textContent = "₹" + job.budget;
+    document.getElementById('dt-desc').textContent = job.desc || "Skilled labor required for " + job.title;
+    document.getElementById('dt-loc-text').textContent = job.area || job.district;
+    document.getElementById('detail-panel').classList.add('open');
+    setTimeout(() => document.getElementById('job-footer').classList.add('show'), 200);
+  }
+
+  function closeDetail() {
+    document.getElementById('job-footer').classList.remove('show');
+    document.getElementById('detail-panel').classList.remove('open');
+  }
+
+  function bookNow() {
+    const isSubscribed = true; // Temporary logic parity
+    if(!isSubscribed) { showToast("Renew subscription to book!"); return; }
+    const job = window.allJobs.find(j => j.id == currentJobId);
+    
+    // Local History
+    let myBookings = JSON.parse(localStorage.getItem('my_booked_jobs') || '[]');
+    if(!myBookings.find(b => b.id === job.id)) {
+      myBookings.push({ ...job, bookedAt: new Date().toISOString() });
+      localStorage.setItem('my_booked_jobs', JSON.stringify(myBookings));
+      document.getElementById('stat-works').textContent = myBookings.length;
+    }
+
+    db.collection("notifications").add({ contractor: job.contractor, labour: tnpvc_u.name, title: "Order Booked!", body: `${tnpvc_u.name} is interested in: ${job.title}`, date: new Date().toISOString(), type: "booking", read: false });
+    showToast("Booking Successful!");
+    setTimeout(() => { 
+      window.open(`https://wa.me/${job.phone.length===10?'91'+job.phone:job.phone}?text=Hi, I am interested in your ${job.title} work.`); 
+      closeDetail();
+      switchTab('tab-bookings-list');
+    }, 1000);
+  }
+
+  function renderBookedHistory() {
+    const container = document.getElementById('booked-items');
+    const myBookings = JSON.parse(localStorage.getItem('my_booked_jobs') || '[]');
+    if(myBookings.length === 0) {
+      container.innerHTML = `<div style="text-align: center; padding: 100px 20px;"><div style="font-size: 50px; margin-bottom: 24px;">📅</div><h3 style="font-size: 18px; font-weight: 800; color: var(--text-dark);">No Bookings Yet</h3><p style="color:var(--text-muted); font-size:14px; margin-top:8px;">Start booking orders from the marketplace.</p></div>`;
+      return;
+    }
+    container.innerHTML = myBookings.map(j => `
+      <div class="job-item">
+        <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=098E6E&color=fff'}">
+        <div class="j-info">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="j-title">${j.title}</div>
+            <div style="font-size:11px; background:var(--primary-light); color:var(--primary); font-weight:800; padding:4px 8px; border-radius:6px;">Booked</div>
+          </div>
+          <div class="j-meta"><span class="j-price">₹${j.budget}</span><span class="j-loc">Loc: ${j.area}</span></div>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('stat-works').textContent = myBookings.length;
+  }
+
+  function renderJobs() {
+    const list = document.getElementById('jobs-list');
+    const jobs = window.allJobs || [];
+    if(jobs.length === 0) { list.innerHTML = '<p style="text-align:center; padding:40px; color:#64748B;">No jobs in your district.</p>'; return; }
+    list.innerHTML = jobs.map(j => `
+      <div class="job-item" onclick="openJob('${j.id}')">
+        <div class="j-info">
+          <div><div class="j-title">${j.title}</div><div class="j-loc">📍 ${j.area}</div></div>
+          <div class="j-meta"><span class="j-price">₹${j.budget}</span><span class="j-type">Urgent</span></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ADMIN CONFIG LISTENER
+  db.collection('app_config').doc('promo').onSnapshot(doc => {
+    if(doc.exists) {
+      const data = doc.data();
+      const banner = document.querySelector('.promo-banner img');
+      if(banner && data.imageUrl) banner.src = data.imageUrl;
+      const title = document.querySelector('.promo-banner h2');
+      if(title && data.title) title.textContent = data.title;
+    }
+  });
+
+  function showToast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
+  function logout() { if(confirm('Logout?')) { localStorage.clear(); location.replace('index.html'); } }
+  
+  function renewPlan() {
+    const options = {
+      "key": "rzp_test_YourKeyHere",
+      "amount": 100000,
+      "currency": "INR",
+      "name": "TNPVC Connect Hub",
+      "description": "Monthly Plan Renewal",
+      "handler": function (response){
+        const until = new Date();
+        until.setMonth(until.getMonth() + 1);
+        tnpvc_u.validUntil = until.toISOString();
+        localStorage.setItem('tnpvc_user', JSON.stringify(tnpvc_u));
+        showToast("Renewal Successful!");
+        setTimeout(() => window.location.reload(), 2000);
+      },
+      "prefill": { "name": tnpvc_u.name },
+      "theme": { "color": "#098E6E" }
+    };
+    const rzp = new Razorpay(options);
+    rzp.open();
+  }
+  
+  // Initial Sync
+  const initialBookings = JSON.parse(localStorage.getItem('my_booked_jobs') || '[]');
+  document.getElementById('stat-works').textContent = initialBookings.length;
+  renderJobs();
+
+  // PROMOTIONS LISTENER (Cards)
+  db.collection('promotions').orderBy('createdAt', 'desc').onSnapshot(snap => {
+    const scroller = document.querySelector('.promo-scroll');
+    if(!scroller) return;
+    scroller.innerHTML = snap.docs.map(doc => {
+      const p = doc.data();
+      return `<div class="p-card" style="background-image: url('${p.imageUrl}')">
+        ${p.title ? `<h4>${p.title}</h4><p>Global Promotion</p>` : ''}
+      </div>`;
+    }).join('') + `
+      <div class="p-card no-txt" style="background-image: url('bbbbb.jpg');"></div>
+      <div class="p-card" style="background: linear-gradient(135deg, #098E6E, #16202A);">
+        <div class="p-card-tag">NEW</div>
+        <h4>Premium Access</h4>
+        <p>Get unlimited leads today</p>
+      </div>
+    `;
+  });
+</script>
+
+</body>
+</html>

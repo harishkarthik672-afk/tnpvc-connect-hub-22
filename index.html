@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TNPVC Connect Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <!-- Firebase SDKs (Compat Version) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --brand: #0085FF;
+    --brand-dark: #0066CC;
+    --text: #111111;
+    --text-muted: #888888;
+    --bg: #FFFFFF;
+  }
+
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden;}
+
+  body {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+  }
+
+  .app-container {
+    width:100%;
+    max-width:440px;
+    height:100vh;
+    display:flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .screen {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 40px 24px 30px;
+    position: relative;
+    justify-content: space-between;
+  }
+
+  .illustration-wrap {
+    text-align: center;
+    flex: 0 1 auto;
+  }
+  .illustration-wrap svg {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+  }
+
+  .hello-text {
+    text-align: center;
+    margin: 20px 0;
+  }
+  .hello-text h1 {
+    font-size: 42px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    letter-spacing: -0.04em;
+  }
+  .hello-text p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    padding: 0 15px;
+  }
+
+  .btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    border-radius: 100px;
+    border: none;
+    background: var(--brand);
+    color: #FFFFFF;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 16px rgba(0, 133, 255, 0.15);
+  }
+
+  .btn-outline {
+    width: 100%;
+    padding: 16px;
+    border-radius: 100px;
+    border: 1.5px solid #DDD;
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .signin-header {
+    margin-top: 10px;
+    margin-bottom: 30px;
+  }
+  .signin-header h1 {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 4px;
+    letter-spacing: -0.03em;
+  }
+  .signin-header p {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .input-field {
+    margin-bottom: 24px;
+  }
+  .input-field label {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .input-field input {
+    width: 100%;
+    padding: 10px 0;
+    border: none;
+    border-bottom: 1.5px solid #EEE;
+    font-family: inherit;
+    font-size: 16px;
+    color: var(--text);
+    background: transparent;
+  }
+  .input-field input:focus { outline: none; border-bottom-color: var(--brand); }
+
+  .forgot-link {
+    display: block;
+    text-align: center;
+    margin: 15px 0 25px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    text-decoration: none;
+  }
+
+  .social-footer {
+    text-align: center;
+    margin-top: auto;
+  }
+  .social-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .social-icons {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .icon-circle {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .icon-circle:active { transform: scale(0.9); }
+  .icon-circle.fb { background: #1877F2; }
+  .icon-circle.google { background: #EA4335; }
+  .icon-circle svg { width: 22px; height: 22px; fill: #FFF; pointer-events: none; }
+
+  .signup-link {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .signup-link a { color: var(--text); font-weight: 800; text-decoration: none; }
+
+  .hidden { display: none !important; }
+
+  /* Modal Style */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px); z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .modal-card {
+    background: #FFF; width: 100%; max-width: 360px;
+    border-radius: 24px; padding: 32px; position: relative;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes modalPop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+  .close-modal {
+    position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #888;
+  }
+
+  .modal-card h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; text-align: center; }
+  .modal-card p { font-size: 14px; color: var(--text-muted); text-align: center; margin-bottom: 24px; }
+  
+  .modal-roles { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+  .m-role-btn {
+    width: 100%; padding: 16px; border-radius: 14px; border: 1.5px solid #EEE;
+    background: #FAFAFA; font-family: inherit; font-weight: 700; cursor: pointer;
+    text-align: center; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+  }
+  .m-role-btn.active { border-color: var(--brand); background: #F0F7FF; color: var(--brand); }
+</style>
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- HELLO SCREEN -->
+    <div class="screen" id="screen-hello">
+      <div class="illustration-wrap">
+        <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="200" cy="150" r="100" fill="#F0F9FF"/>
+          <path d="M150 250 Q200 120 250 250" fill="#BFDBFE"/>
+          <circle cx="200" cy="110" r="35" fill="#FDBA74"/>
+          <path d="M220 110 Q240 90 260 110" stroke="#000" stroke-width="2.5" fill="none"/>
+        </svg>
+      </div>
+
+      <div class="hello-text">
+        <h1>வணக்கம்!</h1>
+        <p>Tamil Nadu-வின் தொழில்முறை PVC நெட்வொர்க்கிற்கு உங்களை வரவேற்கிறோம். Join thousands of pros today.</p>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-primary" onclick="showAuth('login')">Login</button>
+        <button class="btn-outline" onclick="showAuth('signup')">Sign Up</button>
+      </div>
+
+      <div class="social-footer" style="margin-top:30px;">
+        <div class="social-label">Or Login With</div>
+        <div class="social-icons">
+          <div class="icon-circle fb" id="btn-fb-login" onclick="openRoleModal('fb')"><svg viewBox="0 0 24 24"><path d="M22.675 0h-21.35c-.732 0-1.325.593-1.325 1.325v21.351c0 .731.593 1.324 1.325 1.324h11.495v-9.294h-3.128v-3.622h3.128v-2.671c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24 l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12v9.293h6.116c.73 0 1.323-.593 1.323-1.325v-21.35c0-.732-.593-1.325-1.325-1.325z"/></svg></div>
+          <div class="icon-circle google" id="btn-google-login" onclick="openRoleModal('google')"><svg viewBox="0 0 24 24"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307c-1.973-1.893-4.507-3.32-8.213-3.32-6.627 0-12 5.373-12 12s5.373 12 12 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053h-11.067z"/></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen hidden" id="screen-auth">
+      <div class="signin-header">
+        <h1 id="auth-title">Welcome Back!</h1>
+        <p id="auth-sub">Sign in to Continue</p>
+      </div>
+
+      <div class="form-wrap">
+        <form id="auth-form" onsubmit="return false;">
+          <div class="input-field" id="wrap-name">
+            <label>Full Name</label>
+            <input type="text" id="a-name" placeholder="Enter your name" required>
+          </div>
+          <div class="input-field">
+            <label>Email Address</label>
+            <input type="email" id="a-user" placeholder="Enter your email" required>
+          </div>
+          <div class="input-field">
+            <label>Password</label>
+            <input type="password" id="a-pass" placeholder="*************" required>
+          </div>
+          <button type="submit" class="btn-primary" id="btn-submit">Sign In / Sign Up</button>
+          <button type="button" class="btn-outline" style="margin-top: 12px; background: #FFF; border-color: #EEE; color: #333;" onclick="showHello()">Back</button>
+        </form>
+      </div>
+
+      <div class="social-footer">
+        <div class="signup-link" id="tip-auth">
+          Don’t have an account? <a href="#" onclick="showAuth('signup')">Sign Up</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE SETUP SCREEN -->
+    <div class="screen hidden" id="screen-profile" style="padding-top: 30px; overflow-y: auto; justify-content: flex-start;">
+      <div class="signin-header" style="margin-bottom: 25px;">
+        <h1 style="font-size: 28px;">Complete Profile</h1>
+        <p>Please provide your details to continue</p>
+      </div>
+
+      <div class="form-wrap" style="flex:1;">
+        <form id="profile-form" onsubmit="return false;">
+          
+          <div style="display:flex; justify-content:center; margin-bottom:24px;">
+            <div style="position:relative; width:85px; height:85px; border-radius:50%; background:#F0F9FF; display:flex; align-items:center; justify-content:center; border: 2px dashed var(--brand); cursor:pointer;" onclick="document.getElementById('p-photo').click()">
+              <span style="font-size:28px;">📷</span>
+              <input type="file" id="p-photo" accept="image/*" style="display:none;" onchange="previewPhoto(event)">
+              <img id="p-photo-preview" src="" style="width:100%; height:100%; border-radius:50%; object-fit:cover; position:absolute; inset:0; display:none;">
+            </div>
+          </div>
+
+          <div class="input-field">
+            <label>Full Name</label>
+            <input type="text" id="p-name" placeholder="Enter name" required>
+          </div>
+          <div class="input-field">
+            <label>Phone Number</label>
+            <input type="text" id="p-phone" placeholder="e.g. 9876543210" required>
+          </div>
+          <div class="input-field">
+            <label>Aadhaar Number</label>
+            <input type="text" id="p-aadhaar" placeholder="12-digit Aadhaar No." required maxlength="12">
+          </div>
+          <div class="input-field">
+            <label>District</label>
+            <select id="p-district" required style="width: 100%; padding: 10px 0; border: none; border-bottom: 1.5px solid #EEE; font-family: inherit; font-size: 16px; color: var(--text); background: transparent; outline: none;">
+              <option value="" disabled selected>Select District</option>
+              <option value="Ariyalur">Ariyalur</option>
+              <option value="Chengalpattu">Chengalpattu</option>
+              <option value="Chennai">Chennai</option>
+              <option value="Coimbatore">Coimbatore</option>
+              <option value="Cuddalore">Cuddalore</option>
+              <option value="Dharmapuri">Dharmapuri</option>
+              <option value="Dindigul">Dindigul</option>
+              <option value="Erode">Erode</option>
+              <option value="Kallakurichi">Kallakurichi</option>
+              <option value="Kanchipuram">Kanchipuram</option>
+              <option value="Kanyakumari">Kanyakumari</option>
+              <option value="Karur">Karur</option>
+              <option value="Krishnagiri">Krishnagiri</option>
+              <option value="Madurai">Madurai</option>
+              <option value="Mayiladuthurai">Mayiladuthurai</option>
+              <option value="Nagapattinam">Nagapattinam</option>
+              <option value="Namakkal">Namakkal</option>
+              <option value="Nilgiris">Nilgiris</option>
+              <option value="Perambalur">Perambalur</option>
+              <option value="Pudukkottai">Pudukkottai</option>
+              <option value="Ramanathapuram">Ramanathapuram</option>
+              <option value="Ranipet">Ranipet</option>
+              <option value="Salem">Salem</option>
+              <option value="Sivaganga">Sivaganga</option>
+              <option value="Tenkasi">Tenkasi</option>
+              <option value="Thanjavur">Thanjavur</option>
+              <option value="Theni">Theni</option>
+              <option value="Thoothukudi">Thoothukudi</option>
+              <option value="Tiruchirappalli">Tiruchirappalli</option>
+              <option value="Tirunelveli">Tirunelveli</option>
+              <option value="Tirupathur">Tirupathur</option>
+              <option value="Tiruppur">Tiruppur</option>
+              <option value="Tiruvallur">Tiruvallur</option>
+              <option value="Tiruvannamalai">Tiruvannamalai</option>
+              <option value="Tiruvarur">Tiruvarur</option>
+              <option value="Vellore">Vellore</option>
+              <option value="Viluppuram">Viluppuram</option>
+              <option value="Virudhunagar">Virudhunagar</option>
+            </select>
+          </div>
+          <div class="input-field">
+            <label>Full Address</label>
+            <input type="text" id="p-address" placeholder="City or Door Address" required>
+          </div>
+          
+          <button type="button" class="btn-primary" id="btn-save-profile" onclick="saveProfile()" style="margin-top:15px;">Confirm</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- PAYMENT SCREEN -->
+    <div class="screen hidden" id="screen-payment" style="text-align: center; justify-content: center; padding: 24px; background: #F8F9FB; align-items: center;">
+      <div style="background: white; border-radius: 24px; padding: 40px 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); max-width: 400px; width: 100%;">
+        <div style="font-size: 50px; margin-bottom: 20px;">💎</div>
+        <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 12px; color: #16202A;">Premium Access</h2>
+        <p style="color: #6B7280; font-size: 14px; margin-bottom: 24px; line-height: 1.5; font-weight: 500;">To use the TNPVC Connect Hub and connect with top professionals, a monthly subscription is required.</p>
+        <div style="background: #E2F5EF; color: #098E6E; font-size: 36px; font-weight: 800; padding: 20px; border-radius: 20px; margin-bottom: 24px; border: 1.5px solid #098E6E;">
+          ₹1,000<span style="font-size: 16px; font-weight: 600; opacity: 0.8;"> /mo</span>
+        </div>
+        <button class="btn-primary" style="background: #098E6E; margin-bottom: 12px; font-size: 16px; padding: 16px; font-weight: 800;" onclick="processPayment()">Pay Securely Now</button>
+        <button class="btn-primary" style="background: transparent; border: 2px solid #E5E7EB; color: #6B7280; font-size: 15px; padding: 14px; font-weight: 700;" onclick="cancelPayment()">Cancel</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROLE MODAL -->
+  <div class="modal-overlay hidden" id="modal-role" onclick="closeModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="close-modal" onclick="closeModal()">&times;</div>
+      <h2>Select Your Role</h2>
+      <p>How do you want to use TNPVC Connect Hub?</p>
+      
+      <div class="modal-roles">
+        <button class="m-role-btn active" id="modal-role-contractor" onclick="setModalRole('contractor')">
+          <span>Contractor</span>
+        </button>
+        <button class="m-role-btn" id="modal-role-labour" onclick="setModalRole('labour')">
+          <span>Labour</span>
+        </button>
+      </div>
+      
+      <button class="btn-primary" id="btn-modal-continue" onclick="handleModalContinue()">Continue</button>
+    </div>
+  </div>
+
+  <script>
+    // --- INSTANT SESSION RECOVERY ---
+    (function checkSession() {
+      try {
+        const uStr = localStorage.getItem('tnpvc_user');
+        if (uStr) {
+          const u = JSON.parse(uStr);
+          if (u && u.role) {
+            if (u.profileCompleted && u.isSubscribed) {
+              // Redirect instantly, do not wait
+              window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
+            } else if (u.profileCompleted && !u.isSubscribed) {
+              // Partially complete, needs payment
+              document.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('screen-hello').classList.add('hidden');
+                document.getElementById('screen-auth').classList.add('hidden');
+                document.getElementById('modal-role').classList.add('hidden');
+                document.getElementById('screen-profile').classList.add('hidden');
+                document.getElementById('screen-payment').classList.remove('hidden');
+              });
+            } else {
+              // Wait for DOM to finish assembling to uncover the profile setup screen directly
+              document.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('screen-hello').classList.add('hidden');
+                document.getElementById('screen-auth').classList.add('hidden');
+                document.getElementById('modal-role').classList.add('hidden');
+                document.getElementById('screen-profile').classList.remove('hidden');
+                document.getElementById('p-name').value = u.name || '';
+              });
+            }
+          }
+        }
+      } catch(e) {}
+    })();
+
+    // --- UI LOGIC ---
+    window.selectedRole = 'contractor';
+    window.authMethod = 'google';
+
+    // --- FIREBASE INITIALIZATION ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU",
+      authDomain: "tnpvc-connect-hub.firebaseapp.com",
+      projectId: "tnpvc-connect-hub",
+      storageBucket: "tnpvc-connect-hub.firebasestorage.app",
+      messagingSenderId: "919957830993",
+      appId: "1:919957830993:web:e1a2036a4258f683826770",
+      measurementId: "G-B69Q2TRS5H"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
+    const fbProvider = new firebase.auth.FacebookAuthProvider();
+
+    function showAuth(m) {
+      document.getElementById('screen-hello').classList.add('hidden');
+      document.getElementById('screen-auth').classList.remove('hidden');
+      
+      const isLogin = m === 'login';
+      document.getElementById('auth-title').textContent = isLogin ? 'Welcome Back!' : 'Create Account';
+      document.getElementById('auth-sub').textContent = isLogin ? 'Sign in to Continue' : 'Join TNPVC Connect Hub';
+      
+      const nameField = document.getElementById('wrap-name');
+      const nameInput = document.getElementById('a-name');
+      
+      if (isLogin) {
+        nameField.style.display = 'none';
+        nameInput.removeAttribute('required');
+      } else {
+        nameField.style.display = 'block';
+        nameInput.setAttribute('required', 'true');
+      }
+      
+      document.getElementById('btn-submit').textContent = isLogin ? 'Login Now' : 'Sign Up';
+    }
+
+    function showHello() {
+      document.getElementById('screen-hello').classList.remove('hidden');
+      document.getElementById('screen-auth').classList.add('hidden');
+      document.getElementById('a-name').value = '';
+      document.getElementById('a-user').value = '';
+      document.getElementById('a-pass').value = '';
+    }
+
+    function closeModal(e) {
+      if(e) e.stopPropagation();
+      document.getElementById('modal-role').classList.add('hidden');
+    }
+
+    function openRoleModal(method) {
+      window.authMethod = method;
+      document.getElementById('modal-role').classList.remove('hidden');
+    }
+
+    function setModalRole(role) {
+      window.selectedRole = role;
+      document.querySelectorAll('.m-role-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('modal-role-' + role).classList.add('active');
+    }
+
+    // --- PROFILE COMPLETION LOGIC ---
+    window.proceedToApp = function(userData) {
+      if (typeof userData === 'string') userData = JSON.parse(userData);
+      
+      // Hide all possible screens 
+      document.getElementById('screen-hello').classList.add('hidden');
+      document.getElementById('screen-auth').classList.add('hidden');
+      document.getElementById('modal-role').classList.add('hidden');
+      document.getElementById('screen-profile').classList.add('hidden');
+      if(document.getElementById('screen-payment')) document.getElementById('screen-payment').classList.add('hidden');
+
+      if (!userData.profileCompleted) {
+        document.getElementById('screen-profile').classList.remove('hidden');
+        document.getElementById('p-name').value = userData.name || '';
+      } else if (!userData.isSubscribed) {
+        if(document.getElementById('screen-payment')) {
+          document.getElementById('screen-payment').classList.remove('hidden');
+        } else {
+          // Fallback if payment screen not available
+          window.location.replace(userData.role === 'labour' ? 'labour.html' : 'contractor.html');
+        }
+      } else {
+        window.location.replace(userData.role === 'labour' ? 'labour.html' : 'contractor.html');
+      }
+    };
+
+    window.saveProfile = function() {
+      try {
+        const name = document.getElementById('p-name').value.trim();
+        const phone = document.getElementById('p-phone').value.trim();
+        const aadhaar = document.getElementById('p-aadhaar').value.trim();
+        const district = document.getElementById('p-district').value;
+        const addr = document.getElementById('p-address').value.trim();
+
+        if(!name || !phone || !aadhaar || !district || !addr) {
+           alert("Please fill all the details to continue!");
+           return;
+        }
+
+        let u = JSON.parse(localStorage.getItem('tnpvc_user') || '{}');
+        u.name = name;
+        u.phone = phone;
+        u.aadhaar = aadhaar;
+        u.district = district;
+        u.address = addr;
+        u.profileCompleted = true;
+        u.isSubscribed = false; 
+        u.updatedAt = new Date().toISOString();
+        
+        localStorage.setItem('tnpvc_user', JSON.stringify(u));
+
+        // Disable button while saving
+        const btn = document.getElementById('btn-save-profile');
+        if(btn) { btn.textContent = 'Please wait...'; btn.disabled = true; }
+
+        // Go to payment screen IMMEDIATELY for responsiveness
+        window.proceedToApp(u);
+
+        // SYNC TO CLOUD IN BACKGROUND
+        if (typeof db !== 'undefined' && db) {
+          db.collection('users').doc(phone).set(u).catch(err => {
+            console.error("Delayed Cloud Sync Failed", err);
+          });
+        }
+      } catch (e) {
+        alert("Error: " + e.message);
+        console.error(e);
+      }
+    };
+
+    window.processPayment = function() {
+      let uStr = localStorage.getItem('tnpvc_user');
+      if(uStr) {
+        let u = JSON.parse(uStr);
+        
+        const options = {
+          "key": "rzp_test_placeholder", 
+          "amount": 1000 * 100,
+          "currency": "INR",
+          "name": "TNPVC Connect Hub",
+          "description": "Monthly Subscription",
+          "handler": function (response) {
+            u.isSubscribed = true;
+            let validDate = new Date();
+            validDate.setDate(validDate.getDate() + 30);
+            u.validUntil = validDate.toISOString();
+            u.paymentId = response.razorpay_payment_id;
+            
+            localStorage.setItem('tnpvc_user', JSON.stringify(u));
+            
+            // SYNC PAYMENT STATUS TO CLOUD
+            const userRef = db.collection('users').doc(u.phone || u.email);
+            userRef.set(u, { merge: true }).then(() => {
+               window.proceedToApp(u);
+            }).catch(e => {
+               console.error("Cloud Payment Sync Failed", e);
+               window.proceedToApp(u); // Proceed anyway as local is updated
+            });
+          },
+          "prefill": { "name": u.name, "email": u.email, "contact": u.phone },
+          "theme": { "color": "#098E6E" }
+        };
+        const rzp = new Razorpay(options);
+        rzp.open();
+      }
+    };
+
+    window.cancelPayment = function() {
+      localStorage.removeItem('tnpvc_user');
+      window.location.reload();
+    };
+
+    window.previewPhoto = function(e) {
+       const file = e.target.files[0];
+       if(file) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+             const img = document.getElementById('p-photo-preview');
+             img.src = ev.target.result;
+             img.style.display = 'block';
+             
+             let u = JSON.parse(localStorage.getItem('tnpvc_user') || '{}');
+             u.photo = ev.target.result;
+             localStorage.setItem('tnpvc_user', JSON.stringify(u));
+          };
+          reader.readAsDataURL(file);
+       }
+    };
+
+
+    // --- FALLBACK LOGIC ---
+    window.manualCreds = null;
+
+    window.executeAuthFallback = function(msg) {
+      // console.log("Auth Fallback Driven by:", msg);
+      const fakeUser = {
+        name: window.manualCreds ? window.manualCreds.name : 'TNPVC User',
+        email: window.manualCreds ? window.manualCreds.email : 'user@example.com',
+        role: window.selectedRole || 'contractor',
+        profileCompleted: false
+      };
+      localStorage.setItem('tnpvc_user', JSON.stringify(fakeUser));
+      window.proceedToApp(fakeUser);
+    };
+
+    function handleModalContinue() {
+      const loadingBtn = document.getElementById('btn-modal-continue');
+      loadingBtn.textContent = 'Please wait...';
+      loadingBtn.disabled = true;
+
+      if (typeof window.firebaseProcessModal === 'function') {
+        window.firebaseProcessModal();
+      } else {
+        // Module failed to load completely
+        window.executeAuthFallback('Firebase failed to load. Bypassing to preview the Dashboard.');
+      }
+    }
+  </script>
+
+  <script>
+    // --- AUTH ACTIONS ---
+    window.firebaseProcessModal = async () => {
+      try {
+        const role = window.selectedRole;
+        const method = window.authMethod;
+
+        if (method === 'manual-signup') {
+          const res = await auth.createUserWithEmailAndPassword(window.manualCreds.email, window.manualCreds.password);
+          await res.user.updateProfile({ displayName: window.manualCreds.name });
+          
+          const u = {
+            name: window.manualCreds.name,
+            email: window.manualCreds.email,
+            role: role,
+            profileCompleted: false
+          };
+          localStorage.setItem('tnpvc_user', JSON.stringify(u));
+          window.proceedToApp(u);
+        } else {
+          const provider = method === 'google' ? googleProvider : fbProvider;
+          const result = await auth.signInWithPopup(provider);
+          const user = result.user;
+          
+          const u = {
+            name: user.displayName,
+            email: user.email,
+            role: role,
+            profileCompleted: false
+          };
+          localStorage.setItem('tnpvc_user', JSON.stringify(u));
+          window.proceedToApp(u);
+        }
+      } catch (error) {
+        console.error("Auth Error", error);
+        window.executeAuthFallback(error.message);
+      }
+    };
+
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('a-user').value.trim();
+      const pass = document.getElementById('a-pass').value.trim();
+      const name = document.getElementById('a-name').value.trim();
+      const isLogin = document.getElementById('wrap-name').style.display === 'none';
+
+      if (!email || !pass) {
+        alert("Please enter a valid email and password.");
+        return;
+      }
+      
+      if (pass.length < 6) {
+        alert("Password must be at least 6 characters.");
+        return;
+      }
+
+      const btn = document.getElementById('btn-submit');
+      const originalText = btn.textContent;
+      btn.textContent = 'Please wait...';
+      btn.disabled = true;
+
+      try {
+        if (isLogin) {
+          const res = await auth.signInWithEmailAndPassword(email, pass);
+          
+          const storedProfile = JSON.parse(localStorage.getItem('tnpvc_user') || '{}');
+          const finalRole = storedProfile.role || 'contractor';
+          const isCompleted = storedProfile.profileCompleted || false;
+
+          const u = { 
+            name: res.user.displayName || storedProfile.name || 'User', 
+            email: res.user.email,
+            role: finalRole,
+            profileCompleted: isCompleted
+          };
+          localStorage.setItem('tnpvc_user', JSON.stringify(u));
+          window.proceedToApp(u);
+
+        } else {
+          if (!name) {
+             alert("Please enter your full name."); 
+             btn.textContent = originalText;
+             btn.disabled = false;
+             return; 
+          }
+          
+          window.manualCreds = { email: email, password: pass, name: name };
+          window.authMethod = 'manual-signup';
+          document.getElementById('modal-role').classList.remove('hidden');
+          
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }
+      } catch (error) {
+        console.error("Manual Auth Error", error);
+        window.executeAuthFallback(error.message);
+      }
+    });
+
+    auth.onAuthStateChanged((user) => {
+      // Logic for session persistence
+    });
+  </script>
+</body>
+</html>

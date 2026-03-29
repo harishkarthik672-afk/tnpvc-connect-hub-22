@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TNPVC Super Auth Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --primary: #098E6E;
+    --dark: #0F172A;
+    --bg: #F8FAFC;
+    --border: #E2E8F0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--dark); overflow-x: hidden; }
+
+  /* Login Wall */
+  #login-wall { position: fixed; inset: 0; background: #fff; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .login-card { width: 100%; max-width: 400px; padding: 40px 30px; background: #fff; border: 1.5px solid var(--border); border-radius: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.05); text-align: center; }
+  .login-card h1 { font-size: 24px; font-weight: 800; margin-bottom: 8px; color: var(--primary); }
+  .login-card p { font-size: 14px; color: #64748B; margin-bottom: 30px; font-weight: 500; }
+  .login-card input { width: 100%; padding: 18px; border: 1.5px solid var(--border); border-radius: 18px; margin-bottom: 15px; font-size: 15px; font-weight: 700; outline: none; transition: 0.3s; }
+  .login-card input:focus { border-color: var(--primary); }
+  .login-btn { width: 100%; padding: 18px; background: var(--primary); color: #fff; border: none; border-radius: 18px; font-weight: 800; font-size: 16px; cursor: pointer; transition: 0.3s; }
+  .login-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(9,142,110,0.2); }
+
+  /* Dashboard Layout */
+  #dashboard-main { display: none; padding: 30px 20px; max-width: 1200px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+  header h1 { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+  header h1 span { color: var(--primary); }
+
+  /* Stats Grid */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 40px; }
+  .stat-card { background: #fff; padding: 24px; border-radius: 24px; border: 1.5px solid var(--border); transition: 0.3s; }
+  .stat-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.05); }
+  .stat-card .icon { font-size: 24px; margin-bottom: 12px; }
+  .stat-card .val { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+  .stat-card .lbl { font-size: 12px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Control Panel */
+  .control-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; margin-bottom: 40px; }
+  .panel { background: #fff; padding: 30px; border-radius: 24px; border: 1.5px solid var(--border); }
+  .panel h2 { font-size: 20px; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+  
+  .upload-box { padding: 30px; border: 2px dashed var(--border); border-radius: 20px; text-align: center; cursor: pointer; transition: 0.3s; margin-bottom: 20px; position: relative; }
+  .upload-box:hover { border-color: var(--primary); background: #F0FDF4; }
+  .upload-box img { width: 100%; height: 180px; object-fit: cover; border-radius: 12px; display: none; margin-top: 15px; }
+  
+  .btn-action { padding: 14px 24px; background: var(--dark); color: #fff; border: none; border-radius: 12px; font-weight: 750; cursor: pointer; width: 100%; }
+  
+  /* Tables */
+  .feed-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  .feed-table th { text-align: left; padding: 12px; font-size: 11px; color: #64748B; text-transform: uppercase; letter-spacing: 1px; }
+  .feed-table td { padding: 14px 12px; font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--border); }
+  .badge { padding: 4px 10px; border-radius: 100px; font-size: 10px; font-weight: 800; }
+  .badge.contractor { background: #E0E7FF; color: #4338CA; }
+  .badge.labour { background: #FEF3C7; color: #B45309; }
+
+  @media (max-width: 600px) {
+    header { flex-direction: column; align-items: flex-start; gap: 15px; }
+    .stat-card .val { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- LOGIN WALL -->
+  <div id="login-wall">
+    <div class="login-card">
+      <h1>TNPVC <span>Admin</span></h1>
+      <p>Secure Enterprise Portal Access</p>
+      <input type="tel" id="admin-id" placeholder="Admin ID (8122...)" maxlength="10">
+      <input type="password" id="admin-pass" placeholder="Authorization Code">
+      <button class="login-btn" onclick="checkAuth()">Authenticate Now</button>
+    </div>
+  </div>
+
+  <!-- MAIN DASHBOARD -->
+  <main id="dashboard-main">
+    <header>
+      <h1>TNPVC Hub <span>SuperControl</span></h1>
+      <div style="display:flex; gap:10px;">
+        <button class="btn-action" onclick="location.reload()" style="width: auto; background: #fff; color: var(--dark); border: 1.5px solid var(--border);">🔄 Sync Cloud</button>
+        <button class="btn-action" onclick="adminLogout()" style="width: auto; background: #FEE2E2; color: #DC2626; border: 1.5px solid #FECACA;">🚪 Security Logout</button>
+      </div>
+    </header>
+
+    <!-- STATISTICS -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="icon">🏗️</div>
+        <div class="val" id="count-contractors">0</div>
+        <div class="lbl">Total Contractors</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">⚒️</div>
+        <div class="val" id="count-labours">0</div>
+        <div class="lbl">Total Labourers</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">📜</div>
+        <div class="val" id="count-paid">0</div>
+        <div class="lbl">Paid Members</div>
+      </div>
+      <div class="stat-card">
+        <div class="icon">💰</div>
+        <div class="val" id="total-revenue">₹0</div>
+        <div class="lbl">Total Earnings</div>
+      </div>
+    </div>
+
+    <!-- CONTROL PANELS -->
+    <div class="control-section">
+      <!-- Promo Manager -->
+      <div class="panel">
+        <h2>🎪 Promo Hub Manager</h2>
+        <div class="upload-box" onclick="document.getElementById('promo-file').click()">
+          <div id="promo-empty">📤 Click to upload Promo Banner<br><small>Replaces images in Labour/Contractor Hub</small></div>
+          <img id="promo-preview" alt="Preview">
+        </div>
+        <input type="file" id="promo-file" accept="image/*" style="display:none" onchange="previewImg(this, 'promo-preview', 'promo-empty')">
+        <input type="text" id="promo-title" placeholder="Banner Heading (e.g. Festival Offer)" style="width:100%; padding:14px; border-radius:12px; border:1.5px solid var(--border); margin-bottom:12px; font-weight:700;">
+        <button class="btn-action" onclick="updateAppContent('promo')">Push to All Users 🚀</button>
+      </div>
+
+      <!-- REVENUE LEDGER -->
+      <div class="panel" style="overflow-y:auto; max-height:450px;">
+        <h2>💳 Membership Ledger</h2>
+        <table class="feed-table">
+           <thead>
+             <tr>
+               <th>User</th>
+               <th>District</th>
+               <th>Paid On</th>
+               <th>Amt</th>
+             </tr>
+           </thead>
+           <tbody id="revenue-ledger">
+             <tr><td colspan="4" style="text-align:center; padding:20px;">Fetching Payments...</td></tr>
+           </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DETAILED USER LIST -->
+    <div class="panel" style="margin-bottom:40px;">
+      <h2>👥 Global User Directory</h2>
+      <div style="margin-bottom:20px; display:flex; gap:10px;">
+        <input type="text" id="user-search" placeholder="Search by name, phone or district..." oninput="filterUserList()" style="width:100%; padding:14px; border-radius:12px; border:1.5px solid var(--border); font-weight:700;">
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="feed-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>District</th>
+              <th>Role</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="user-directory">
+            <tr><td colspan="5" style="text-align:center; padding:40px;">Loading users...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+<script>
+  // Firebase Config
+  const firebaseConfig = { apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU", authDomain: "tnpvc-connect-hub.firebaseapp.com", projectId: "tnpvc-connect-hub", storageBucket: "tnpvc-connect-hub.firebasestorage.app", messagingSenderId: "919957830993", appId: "1:919957830993:web:e1a2036a4258f683826770" };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // Persistent Login Check
+  window.onload = () => {
+    if(localStorage.getItem('tnpvc_admin_session') === 'active') {
+      document.getElementById('login-wall').style.display = 'none';
+      document.getElementById('dashboard-main').style.display = 'block';
+      loadLiveStats();
+    }
+  };
+
+  function checkAuth() {
+    const id = document.getElementById('admin-id').value;
+    const pass = document.getElementById('admin-pass').value;
+    if(id === '8122696217' && pass === 'tnpvc8122') {
+      localStorage.setItem('tnpvc_admin_session', 'active');
+      document.getElementById('login-wall').style.display = 'none';
+      document.getElementById('dashboard-main').style.display = 'block';
+      loadLiveStats();
+    } else {
+      alert('Security Authentication Failed.');
+    }
+  }
+
+  function adminLogout() {
+    if(confirm('Logout from Admin Panel?')) {
+      localStorage.removeItem('tnpvc_admin_session');
+      location.reload();
+    }
+  }
+
+  function previewImg(inp, previewId, emptyId) {
+    if (inp.files && inp.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById(previewId).src = e.target.result;
+        document.getElementById(previewId).style.display = 'block';
+        document.getElementById(emptyId).style.display = 'none';
+      };
+      reader.readAsDataURL(inp.files[0]);
+    }
+  }
+
+  window.allUsers = [];
+
+  async function loadLiveStats() {
+    // 1. Get Jobs
+    const jobsSnap = await db.collection('jobs').get();
+    document.getElementById('count-jobs').textContent = jobsSnap.size;
+
+    // 2. Get Real User Data
+    const usersSnap = await db.collection('users').get();
+    let ctrs = 0, labs = 0, revenue = 0, paidCount = 0;
+    
+    window.allUsers = [];
+    const ledger = document.getElementById('revenue-ledger');
+    ledger.innerHTML = '';
+
+    usersSnap.forEach(doc => {
+      const u = doc.data();
+      window.allUsers.push(u);
+      if(u.role === 'contractor') ctrs++;
+      else if(u.role === 'labour') labs++;
+      
+      if(u.isSubscribed) {
+        paidCount++;
+        revenue += 1000;
+        ledger.innerHTML += `
+          <tr>
+            <td>${u.name}</td>
+            <td>${u.district}</td>
+            <td>${new Date(u.updatedAt).toLocaleDateString()}</td>
+            <td style="color:#098E6E; font-weight:800;">₹1000</td>
+          </tr>
+        `;
+      }
+    });
+
+    document.getElementById('count-contractors').textContent = ctrs;
+    document.getElementById('count-labours').textContent = labs;
+    document.getElementById('count-paid').textContent = paidCount;
+    document.getElementById('total-revenue').textContent = '₹' + revenue.toLocaleString('en-IN');
+
+    renderUserDirectory(window.allUsers);
+  }
+
+  function renderUserDirectory(users) {
+    const list = document.getElementById('user-directory');
+    list.innerHTML = users.map(u => `
+      <tr>
+        <td>${u.name}</td>
+        <td>${u.phone}</td>
+        <td>${u.district}</td>
+        <td><span class="badge ${u.role}">${u.role.toUpperCase()}</span></td>
+        <td><span style="color:${u.isSubscribed ? '#10B981' : '#64748B'};">● ${u.isSubscribed ? 'Premium' : 'Free'}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  function filterUserList() {
+    const q = document.getElementById('user-search').value.toLowerCase();
+    const filtered = window.allUsers.filter(u => 
+      u.name.toLowerCase().includes(q) || 
+      u.phone.includes(q) || 
+      u.district.toLowerCase().includes(q)
+    );
+    renderUserDirectory(filtered);
+  }
+
+  async function updateAppContent(type) {
+    const btn = document.querySelector(`button[onclick*='updateAppContent("${type}")']`);
+    if(btn) { btn.textContent = 'Uploading...'; btn.disabled = true; }
+
+    try {
+      const fileId = type === 'promo' ? 'promo-file' : 'service-file';
+      const file = document.getElementById(fileId).files[0];
+      const title = type === 'promo' ? document.getElementById('promo-title').value : '';
+
+      if(!file) throw new Error('Specify an image to upload');
+      if(file.size > 1048576) throw new Error('Image too large! Use images under 1MB for Firebase Cloud.');
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target.result;
+        
+        if(type === 'promo') {
+           await db.collection('promotions').add({
+             imageUrl: base64,
+             title: title || 'New Offer',
+             createdAt: new Date().toISOString()
+           });
+           alert('Promotion Live! Status: Multi-Platform Sync OK');
+        } else {
+           await db.collection('app_config').doc(type).set({
+             imageUrl: base64, title: 'Service Icon', updatedAt: new Date().toISOString()
+           });
+           alert('Global Asset Updated.');
+        }
+
+        if(btn) { btn.textContent = 'Success ✅'; setTimeout(() => { btn.textContent = 'Publish to Cloud 🚀'; btn.disabled = false; }, 2000); }
+      };
+      reader.readAsDataURL(file);
+    } catch(err) {
+      alert(err.message);
+      if(btn) { btn.textContent = 'Retry ❌'; btn.disabled = false; }
+    }
+  }
+</script>
+</body>
+</html>
