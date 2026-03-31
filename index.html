@@ -1601,25 +1601,24 @@
 
     auth.onAuthStateChanged(async (user) => {
       if (user) {
-        console.log("Firebase User detected:", user.email);
+        console.log("Firebase User detected in background:", user.email);
         const uStr = localStorage.getItem('tnpvc_user');
         
-        // If no session OR session doesn't have a role, we must handle it
-        if (!uStr || !JSON.parse(uStr).role) {
+        // ONLY progress IF we are certain the user wants to (e.g. no session exists yet)
+        // or if they are already fully completed.
+        if (!uStr) {
+           // No local record? Then we need to identify them.
            window.handleAuthSuccess(user);
         } else {
-           // Basic session sync (Hide welcome screens just in case they are still visible)
            const u = JSON.parse(uStr);
-           if (u.role) {
+           if (u.role && u.profileCompleted) {
+              // AUTO-REDIRECT COMPLETED USERS ONLY
               const safeHide = (id) => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); };
               safeHide('screen-hello');
               safeHide('screen-auth');
-              
-              if(!u.profileCompleted) {
-                const safeShow = (id) => { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); };
-                safeShow('screen-profile');
-              }
+              window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
            }
+           // IMPORTANT: If they are incomplete, WE STAY ON WELCOME PAGE until they click something or we verify status.
         }
       }
     });
