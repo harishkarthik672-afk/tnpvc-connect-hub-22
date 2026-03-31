@@ -412,14 +412,17 @@
 
   .modal-card h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; text-align: center; }
   .modal-card p { font-size: 14px; color: var(--text-muted); text-align: center; margin-bottom: 24px; }
-  
-  .modal-roles { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
-  .m-role-btn {
-    width: 100%; padding: 16px; border-radius: 14px; border: 1.5px solid #EEE;
-    background: #FAFAFA; font-family: inherit; font-weight: 700; cursor: pointer;
-    text-align: center; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
-  }
-  .m-role-btn.active { border-color: var(--brand); background: #F0F7FF; color: var(--brand); }
+  /* Role Screen (Replacing modal for better visibility) */
+  .screen-role-wrap { padding: 40px 24px; text-align: center; }
+  .screen-role-title { font-size: 24px; font-weight: 800; color: var(--text-dark); margin-bottom: 8px; }
+  .screen-role-sub { color: var(--text-muted); font-size: 15px; margin-bottom: 40px; }
+  .role-card { background: #fff; border: 2px solid var(--border); border-radius: 24px; padding: 24px; margin-bottom: 16px; transition: 0.3s; cursor: pointer; display: flex; align-items: center; gap: 20px; text-align: left; }
+  .role-card.active { border-color: var(--primary); background: #F5EFFF; box-shadow: 0 10px 25px rgba(106,31,194,0.1); }
+  .role-card-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; background: #f8fafc; transition: 0.3s; }
+  .role-card.active .role-card-icon { background: var(--primary); color: #fff; transform: scale(1.1); }
+  .role-info h4 { font-size: 17px; font-weight: 800; color: var(--text-dark); margin-bottom: 2px; }
+  .role-info p { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+  #btn-role-continue { margin-top: 20px; width: 100%; }
 
   /* ===== PREMIUM PROFILE SCREEN ===== */
 
@@ -779,6 +782,35 @@
       </div>
     </div>
 
+    <!-- ROLE SCREEN (Previously Modal, now Full Screen for better visibility) -->
+    <div class="screen hidden" id="screen-role-select">
+      <div class="screen-role-wrap">
+        <h2 class="screen-role-title">Choose Your Path</h2>
+        <p class="screen-role-sub">Select how you want to use TNPVC Connect Hub</p>
+
+        <div class="role-grid">
+          <div class="role-card" id="card-contractor" onclick="selectAppRole('contractor')">
+            <div class="role-card-icon">🏗️</div>
+            <div class="role-info">
+              <h4>Contractor</h4>
+              <p>I want to post jobs and find skilled workers.</p>
+            </div>
+          </div>
+          <div class="role-card" id="card-labour" onclick="selectAppRole('labour')">
+            <div class="role-card-icon">👷</div>
+            <div class="role-info">
+              <h4>Worker / Labour</h4>
+              <p>I am looking for jobs and new work orders.</p>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-role-continue" class="btn-primary" onclick="window.handleRoleNextStep()">
+          Continue <span>&rarr;</span>
+        </button>
+      </div>
+    </div>
+
     <!-- PROFILE SETUP SCREEN -->
     <div class="screen hidden" id="screen-profile">
 
@@ -1089,33 +1121,43 @@
     }
 
     function showHello() {
-      document.getElementById('screen-hello').classList.remove('hidden');
-      document.getElementById('screen-auth').classList.add('hidden');
-      document.getElementById('a-name').value = '';
-      document.getElementById('a-user').value = '';
-      document.getElementById('a-pass').value = '';
+      const safeShow = (id) => { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); };
+      const safeHide = (id) => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); };
+      
+      safeShow('screen-hello');
+      safeHide('screen-auth');
+      safeHide('screen-role-select');
+      safeHide('screen-profile');
     }
 
-    function closeModal(e) {
-      if(e) e.stopPropagation();
-      document.getElementById('modal-role').classList.add('hidden');
-    }
-
-    function openRoleModal(method) {
-      window.authMethod = method;
-      document.getElementById('modal-role').classList.remove('hidden');
-    }
-
-    function setModalRole(role) {
+    function selectAppRole(role) {
       window.selectedRole = role;
-      document.querySelectorAll('.m-role-btn').forEach(b => b.classList.remove('active'));
-      const activeBtn = Array.from(document.querySelectorAll('.m-role-btn')).find(b => b.textContent.toLowerCase().includes(role));
-      if(activeBtn) activeBtn.classList.add('active');
-
-      // Update District Extra Visibility right now
-      const extraDist = document.getElementById('row-district-extra');
-      if(extraDist) extraDist.style.display = (role === 'labour') ? 'block' : 'none';
+      document.querySelectorAll('.role-card').forEach(c => c.classList.remove('active'));
+      const activeCard = document.getElementById('card-' + role);
+      if(activeCard) activeCard.classList.add('active');
     }
+
+    window.handleRoleNextStep = function() {
+      const role = window.selectedRole;
+      if(!role) {
+        alert("Please select a role to continue!");
+        return;
+      }
+      
+      const user = auth.currentUser || window.pendingUser;
+      if(user) {
+        const u = {
+          name: user.displayName || 'TNPVC User',
+          email: user.email,
+          role: role,
+          profileCompleted: false
+        };
+        localStorage.setItem('tnpvc_user', JSON.stringify(u));
+        window.proceedToApp(u);
+      } else {
+        window.executeAuthFallback('Role defined, no user found.');
+      }
+    };
 
     // --- PROFILE COMPLETION LOGIC ---
 
@@ -1509,8 +1551,8 @@
         const u = { name: user.displayName || 'TNPVC User', email: user.email, profileCompleted: false };
         localStorage.setItem('tnpvc_user', JSON.stringify(u));
         
-        // Show role selection first!
-        safeShow('modal-role');
+        // Show role selection screen (New UI Replacement)
+        safeShow('screen-role-select');
       }
     };
 
