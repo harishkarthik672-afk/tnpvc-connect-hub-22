@@ -6,11 +6,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
   :root {
-    --primary: #098E6E;
-    --primary-light: #E2F5EF;
+    --primary: #9086FF;
+    --primary-light: #EAE8FF;
     --bg: #F8FAFC;
     --card: #FFFFFF;
     --text-dark: #1E293B;
@@ -20,9 +21,9 @@
   }
   
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text-dark); -webkit-tap-highlight-color: transparent; }
+  html, body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text-dark); -webkit-tap-highlight-color: transparent; }
 
-  .app-container { max-width: 480px; margin: 0 auto; background: var(--bg); min-height: 100vh; position: relative; padding-bottom: 90px; overflow-x: hidden; }
+  .app-container { max-width: 480px; margin: 0 auto; background: var(--bg); min-height: 100vh; position: relative; padding-bottom: 100px; overflow-x: hidden; }
 
   #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--black); color: #fff; padding: 12px 24px; border-radius: 100px; font-size: 14px; font-weight: 700; z-index: 9999; opacity: 0; transition: 0.3s; pointer-events: none; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -36,8 +37,8 @@
   .bell-dot { position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; background: #EF4444; border-radius: 50%; border: 2px solid #fff; }
 
   /* Header Styles (Synced) */
-  .header-wrap { padding: 16px 16px 0px; background: #fff; }
-  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .header-wrap { padding: 16px 16px 16px; background: #fff; margin-bottom: 0; }
+  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
   .user-greet { display: flex; align-items: center; gap: 14px; }
   .avatar { width: 48px; height: 48px; border-radius: 50%; background: #E5E7EB; object-fit: cover; border: 1.5px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
   .greet-text h3 { font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 2px; }
@@ -46,20 +47,41 @@
   /* Search */
   .search-wrap { position: relative; margin-bottom: 24px; }
   .search-wrap input { width: 100%; background: #F8FAFC; border: 1.5px solid var(--border); padding: 16px 50px; border-radius: 18px; font-size: 14px; font-weight: 700; outline: none; transition: 0.3s; color: var(--text-dark); }
-  .search-wrap input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 4px 15px rgba(9,142,110,0.08); }
+  .search-wrap input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 4px 15px rgba(144,134,255,0.08); }
   .search-wrap .sh-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; stroke: var(--text-muted); stroke-width: 2.2; fill: none; }
   .search-wrap input::placeholder { color: var(--text-muted); font-weight: 600; }
 
+  /* Advanced Category Grid (12 Buttons) */
+  .cat-section-title { font-size: 16px; font-weight: 800; margin: 0 16px 16px; color: var(--text-dark); }
+  .category-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 10px; padding: 0 16px 24px; }
+  .cat-item { display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; transition: 0.2s; }
+  .cat-item:active { transform: scale(0.94); }
+  .cat-icon-wrap { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+  .cat-item:hover .cat-icon-wrap { transform: translateY(-4px); }
+  .cat-icon-wrap svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .cat-title { font-size: 10px; font-weight: 700; color: var(--text-dark); line-height: 1.2; letter-spacing: -0.2px; }
+
   /* Promo Cards */
   .section-hdr { font-size: 15px; font-weight: 800; margin: 0 16px 16px; display: flex; justify-content: space-between; align-items: center; }
-  .promo-scroll { display: flex; gap: 14px; overflow-x: auto; padding: 0 16px 20px; margin: 0 -16px 0px; scrollbar-width: none; }
+  .promo-scroll { display: flex; gap: 0; overflow-x: auto; padding: 0 16px 20px; margin: 0; scrollbar-width: none; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
   .promo-scroll::-webkit-scrollbar { display: none; }
-  .p-card { flex: 0 0 82%; border-radius: 24px; height: 160px; padding: 24px; position: relative; overflow: hidden; background-size: cover; background-position: center; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08); }
+  .p-card { flex: 0 0 calc(100% - 32px); margin-right: 16px; flex-shrink: 0; scroll-snap-align: center; border-radius: 24px; height: 180px; padding: 24px; position: relative; overflow: hidden; background-size: cover; background-position: center; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08); touch-action: pan-y; }
   .p-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent); z-index: 1; }
   .p-card.no-txt::before { display: none; }
   .p-card h4 { font-size: 18px; font-weight: 800; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
   .p-card p { font-size: 12px; z-index: 2; opacity: 0.9; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
   .p-card-tag { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); padding: 4px 10px; border-radius: 100px; font-size: 9px; font-weight: 800; z-index: 2; border: 1px solid rgba(255,255,255,0.1); text-transform: uppercase; }
+
+  /* Home Promo Banner Strip */
+  .home-promo-strip { display: flex; gap: 16px; overflow-x: auto; padding: 16px 16px 20px; scrollbar-width: none; background: #F8FAFC; scroll-snap-type: x mandatory; }
+  .home-promo-strip::-webkit-scrollbar { display: none; }
+  .hp-card { flex: 0 0 calc(100% - 0px); scroll-snap-align: center; border-radius: 20px; padding: 20px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 130px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .hp-card-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.22); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.25); border-radius: 100px; padding: 4px 10px; font-size: 9px; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 0.06em; width: fit-content; margin-bottom: 8px; }
+  .hp-card h4 { font-size: 15px; font-weight: 800; color: #fff; line-height: 1.25; margin-bottom: 3px; }
+  .hp-card p { font-size: 11px; color: rgba(255,255,255,0.82); font-weight: 500; line-height: 1.4; }
+  .hp-card-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 12px; background: rgba(255,255,255,0.2); border: 1.5px solid rgba(255,255,255,0.35); color: #fff; font-size: 11px; font-weight: 800; padding: 7px 14px; border-radius: 100px; cursor: pointer; font-family: inherit; width: fit-content; }
+  .hp-deco { position: absolute; right: -20px; top: -20px; width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,0.08); pointer-events: none; }
+  .hp-deco2 { position: absolute; right: 25px; bottom: -30px; width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.06); pointer-events: none; }
 
   /* Stats Row (Modern Round Style) */
   .stats-row { display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 20px; margin: 0 -16px 24px; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
@@ -79,14 +101,16 @@
   .j-price { color: var(--primary); font-weight: 800; font-size: 14px; }
   .j-loc { font-size: 11px; color: var(--text-muted); font-weight: 600; }
 
-  /* Bottom Nav */
-  .bot-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; height: 75px; background: #fff; border-top: 1.5px solid var(--border); display: flex; align-items: center; justify-content: space-around; padding-bottom: 15px; z-index: 5000; box-shadow: 0 -4px 20px rgba(0,0,0,0.03); }
-  .n-item { display: flex; align-items: center; justify-content: center; border: none; background: none; cursor: pointer; height: 44px; padding: 0 12px; border-radius: 100px; transition: 0.35s ease; overflow: hidden; }
-  .n-item svg { width: 22px; height: 22px; stroke: var(--text-muted); stroke-width: 2.2; fill: none; transition: 0.25s; }
-  .n-item span { font-size: 13px; font-weight: 800; color: #fff; max-width: 0; opacity: 0; transition: 0.35s; white-space: nowrap; margin-left: 0; }
-  .n-item.active { background: var(--primary); padding: 0 18px; }
+  /* Bottom Nav — Floating Pill Style */
+  .bot-nav { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 420px; height: 62px; background: #fff; border-radius: 100px; display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 5000; box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(144,134,255,0.08); border: 1.5px solid var(--border); }
+  .n-item { display: flex; align-items: center; justify-content: center; border: none; background: none; cursor: pointer; height: 46px; padding: 0 12px; border-radius: 100px; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); overflow: hidden; font-family: inherit; }
+  .n-item svg { width: 22px; height: 22px; stroke: var(--text-muted); stroke-width: 2.2; fill: none; transition: 0.25s; flex-shrink: 0; }
+  .n-item span { font-size: 13px; font-weight: 800; color: #fff; max-width: 0; opacity: 0; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; margin-left: 0; flex-shrink: 0; }
+  .n-item.active { background: #7C3AED; padding: 0 20px; box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4); }
   .n-item.active svg { stroke: #fff; }
   .n-item.active span { max-width: 100px; opacity: 1; margin-left: 8px; }
+  .n-item:not(.active):hover { background: rgba(144,134,255,0.1); }
+  .n-item:not(.active):hover svg { stroke: var(--primary); }
 
   /* Premium Profile Styles */
   .prof-list-item { background: #fff; border: 1.5px solid var(--border); padding: 16px 20px; border-radius: 18px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
@@ -95,7 +119,7 @@
   .pli-icon { width: 40px; height: 40px; border-radius: 12px; background: #F1F5F9; display: flex; align-items: center; justify-content: center; font-size: 18px; }
   .pli-txt { font-size: 14px; font-weight: 700; color: var(--text-dark); }
   .pli-arrow { width: 20px; height: 20px; stroke: #94A3B8; stroke-width: 2.5; fill: none; }
-  .premium-banner { background: linear-gradient(135deg, #098E6E, #14B8A6); border-radius: 24px; padding: 24px; color: #fff; position: relative; overflow: hidden; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(9,142,110,0.15); }
+  .premium-banner { background: linear-gradient(135deg, #9086FF, #BFA8FF); border-radius: 24px; padding: 24px; color: #fff; position: relative; overflow: hidden; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(144,134,255,0.15); }
   .premium-banner::after { content: '💎'; position: absolute; right: -10px; bottom: -10px; font-size: 80px; opacity: 0.1; }
 
   .page-header { display: flex; align-items: center; justify-content: space-between; padding: 24px 20px 16px; }
@@ -108,6 +132,16 @@
   .nc-body { flex:1; }
   .nc-title { font-size:14px; font-weight:800; color:var(--text-dark); }
   .nc-desc { font-size:12px; color:var(--text-muted); line-height:1.4; }
+  /* Supplier Promo Cards */
+  .supplier-promo-wrap { padding: 16px 0; background: #F8FAFC; border-bottom: 1.5px solid var(--border); margin-bottom: 16px; display: none; }
+  .supplier-promo-wrap.active { display: block; }
+  .supplier-scroll { display: flex; gap: 12px; overflow-x: auto; padding: 0 16px; scrollbar-width: none; scroll-snap-type: x mandatory; }
+  .supplier-scroll::-webkit-scrollbar { display: none; }
+  .s-card { flex: 0 0 140px; background: #fff; border: 1.5px solid var(--border); border-radius: 16px; padding: 12px; text-align: center; scroll-snap-align: start; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+  .s-logo { width: 44px; height: 44px; border-radius: 10px; background: var(--primary-light); margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .s-name { font-size: 11px; font-weight: 800; color: var(--text-dark); line-height: 1.2; margin-bottom: 2px; }
+  .s-tag { font-size: 9px; font-weight: 700; color: var(--primary); text-transform: uppercase; }
+  .s-btn { margin-top: 8px; width: 100%; border: none; background: #F1F5F9; color: var(--text-dark); font-size: 10px; font-weight: 800; padding: 6px; border-radius: 8px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -121,7 +155,7 @@
     <div class="header-wrap">
       <div class="header-top">
         <div class="user-greet">
-          <img src="" id="hdr-avatar" class="avatar">
+          <img src="logo.png" style="height: 50px; object-fit: contain;">
           <div class="greet-text">
             <h2 id="hdr-name" style="font-size: 18px; font-weight: 800; color: var(--text-dark);">User</h2>
             <p><span>📍</span> <span id="hdr-loc">District, TN</span></p>
@@ -133,16 +167,93 @@
         </div>
       </div>
 
-      <div class="search-wrap">
+      <div class="search-wrap" style="margin-bottom:0;">
         <svg class="sh-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" placeholder="Search for jobs or projects...">
+      </div>
+    </div>
+
+    <!-- PROMOTION BANNER STRIP -->
+    <div class="home-promo-strip">
+      <!-- AUTO CAROUSEL WRAPPER -->
+      <div id="promo-carousel" class="hp-card" style="flex: 0 0 100%; height: auto; padding: 0; border: none; min-height: auto; box-shadow: none; overflow: visible;">
+        <img src="ero_banner.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
+      </div>
+      <div class="hp-card" style="flex: 0 0 100%; height: auto; padding: 0; border: none; min-height: auto; box-shadow: none; overflow: visible;">
+        <img src="aaaa.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
+      </div>
+      <div class="hp-card" style="flex: 0 0 100%; height: auto; padding: 0; border: none; min-height: auto; box-shadow: none; overflow: visible;">
+        <img src="bbbbb.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
+      </div>
+      <!-- Card 2: OFFER -->
+      <div class="hp-card" style="background: linear-gradient(135deg, #0EA5E9 0%, #0055CC 100%);">
+        <div class="hp-deco"></div>
+        <div class="hp-deco2"></div>
+        <div>
+          <div class="hp-card-badge">&#127919; OFFER</div>
+          <h4>Complete 5 jobs &amp; unlock free premium next month!</h4>
+          <p>Track your work streak and earn rewards.</p>
+        </div>
+        <button class="hp-card-btn" onclick="switchTab('tab-bookings-list', document.getElementById('btn-nav-chat'))">My Bookings &#x2192;</button>
+      </div>
+    </div>
+
+    <h2 class="cat-section-title">Explore Services</h2>
+    <div class="category-grid">
+      <div class="cat-item" onclick="filterJobsMarket('uPVC Sliding Windows')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #EF4444, #B91C1C); color: #fff; box-shadow: 0 6px 12px rgba(220, 38, 38, 0.25);"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg></div>
+        <div class="cat-title">Sliding<br>Windows</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('uPVC Casement Windows')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #F97316, #C2410C); color: #fff; box-shadow: 0 6px 12px rgba(234, 88, 12, 0.25);"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/><path d="M8 12v4"/><path d="M16 12v4"/></svg></div>
+        <div class="cat-title">Casement<br>Windows</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('uPVC French Doors')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #F59E0B, #B45309); color: #fff; box-shadow: 0 6px 12px rgba(217, 119, 6, 0.25);"><svg viewBox="0 0 24 24"><path d="M18 20V5a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v15"/><path d="M2 20h20"/><path d="M12 20V5"/><path d="M9 12h1"/><path d="M14 12h1"/></svg></div>
+        <div class="cat-title">French<br>Doors</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('uPVC Sliding Doors')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #84CC16, #4D7C0F); color: #fff; box-shadow: 0 6px 12px rgba(101, 163, 13, 0.25);"><svg viewBox="0 0 24 24"><path d="M6 3v18"/><path d="M18 3v18"/><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg></div>
+        <div class="cat-title">Sliding<br>Doors</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('Modular PVC Kitchen')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #10B981, #047857); color: #fff; box-shadow: 0 6px 12px rgba(5, 150, 105, 0.25);"><svg viewBox="0 0 24 24"><path d="M4 10v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10"/><path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4H2V6z"/><path d="M10 14h4"/></svg></div>
+        <div class="cat-title">Modular<br>Kitchen</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('PVC Wardrobe')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #06B6D4, #0369A1); color: #fff; box-shadow: 0 6px 12px rgba(8, 145, 178, 0.25);"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v18"/><path d="M9 11v2"/><path d="M15 11v2"/></svg></div>
+        <div class="cat-title">PVC<br>Wardrobe</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('PVC False Ceiling')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #3B82F6, #1D4ED8); color: #fff; box-shadow: 0 6px 12px rgba(37, 99, 235, 0.25);"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="1"/><path d="M7 10v4"/><path d="M17 10v4"/><path d="M12 10v4"/></svg></div>
+        <div class="cat-title">False<br>Ceiling</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('PVC TV Unit')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #6366F1, #4338CA); color: #fff; box-shadow: 0 6px 12px rgba(79, 70, 229, 0.25);"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="2"/><path d="M8 21h8"/><path d="M12 18v3"/><path d="M16 3l-4 4-4-4"/></svg></div>
+        <div class="cat-title">TV Unit<br>Design</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('PVC Wall Paneling')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: #fff; box-shadow: 0 6px 12px rgba(124, 58, 237, 0.25);"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/><path d="M8 4v16"/><path d="M12 4v16"/><path d="M16 4v16"/></svg></div>
+        <div class="cat-title">Wall<br>Paneling</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('PVC Bathroom Vanity')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #D946EF, #A21CAF); color: #fff; box-shadow: 0 6px 12px rgba(192, 38, 211, 0.25);"><svg viewBox="0 0 24 24"><path d="M5 13h14v7H5z"/><path d="M6 13V8c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2v5"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></div>
+        <div class="cat-title">Bathroom<br>Vanity</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('PVC Office Interiors')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #F43F5E, #BE123C); color: #fff; box-shadow: 0 6px 12px rgba(225, 29, 72, 0.25);"><svg viewBox="0 0 24 24"><path d="M2 19h20M12 19v-6M4 13h16M4 13v6M20 13v6M8 9h8v4H8z"/></svg></div>
+        <div class="cat-title">Office<br>Interiors</div>
+      </div>
+      <div class="cat-item" onclick="filterJobsMarket('uPVC Skylight')">
+        <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #64748B, #334155); color: #fff; box-shadow: 0 6px 12px rgba(71, 85, 105, 0.25);"><svg viewBox="0 0 24 24"><path d="M3 15V9l9-6 9 6v6"/><path d="M3 15h18"/><path d="M12 3v12"/><path d="M7.5 6l1.5 9"/><path d="M16.5 6l-1.5 9"/></svg></div>
+        <div class="cat-title">Skylight<br>Windows</div>
       </div>
     </div>
 
     <div class="section-hdr"><h2>New Opportunities</h2></div>
     <div class="promo-scroll">
       <div class="p-card no-txt" style="background-image: url('bbbbb.jpg');"></div>
-      <div class="p-card" style="background: linear-gradient(135deg, #098E6E, #16202A);">
+      <div class="p-card" style="background: linear-gradient(135deg, #9086FF, #16202A);">
         <div class="p-card-tag">NEW</div>
         <h4>Win 1-Month Premium</h4>
         <p>Complete 5 works this week to unlock free premium for next month!</p>
@@ -150,34 +261,38 @@
       <div class="p-card no-txt" style="background-image: url('aaaa.jpg');"></div>
     </div>
 
-    <div class="section-hdr"><h2>Performance Stats</h2></div>
-    <div class="stats-row">
-      <div class="stat-pill" style="border-left: 4px solid #098E6E;">
-        <div class="stat-lbl">Works Done</div>
-        <div class="stat-val" id="stat-works">0</div>
+    <!-- PERFORMANCE STATS (Original Data Only & Synced Style) -->
+    <h2 class="section-title" style="margin-top: 24px;">Dashboard Performance</h2>
+    <div class="stats-circular-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 0 16px 24px; margin-top: 16px;">
+      
+      <div class="stat-circle-item" style="text-align: center;">
+        <div style="width: 100%; aspect-ratio: 1/1; background: #EEF2FF; border: 1.5px solid #E0E7FF; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+          <div id="stat-works" style="font-size: 18px; font-weight: 900; color: #4F46E5;">0</div>
+          <div style="font-size: 8px; color: #4F46E5; font-weight: 800; text-transform: uppercase;">Done</div>
+        </div>
       </div>
-      <div class="stat-pill" style="border-left: 4px solid #F59E0B;">
-        <div class="stat-lbl">Earned</div>
-        <div class="stat-val">₹<span id="stat-earned">0</span></div>
-      </div>
-      <div class="stat-pill" style="border-left: 4px solid #6366F1;">
-        <div class="stat-lbl">Rating</div>
-        <div class="stat-val">4.8 ★</div>
-      </div>
-      <div class="stat-pill" style="border-left: 4px solid #EF4444;">
-        <div class="stat-lbl">Validity</div>
-        <div class="stat-val" id="stat-validity-pill">0 Days</div>
-      </div>
-    </div>
 
-    <div class="section-hdr"><h2>Best Promotions</h2></div>
-    <div class="promo-scroll">
-      <div class="p-card no-txt" style="background-image: url('ccccc.jpeg');"></div>
-      <div class="p-card" style="background: linear-gradient(135deg, #F59E0B, #DC2626);">
-        <div class="p-card-tag">OFFER</div>
-        <h4>Heavy Drill Kit</h4>
-        <p>Get professional drills at 30% discount. Limited stock only.</p>
+      <div class="stat-circle-item" style="text-align: center;">
+        <div style="width: 100%; aspect-ratio: 1/1; background: #FFFBEB; border: 1.5px solid #FEF3C7; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+          <div style="font-size: 14px; font-weight: 900; color: #F59E0B;">₹<span id="stat-earned">0</span></div>
+          <div style="font-size: 8px; color: #F59E0B; font-weight: 800; text-transform: uppercase;">Earned</div>
+        </div>
       </div>
+
+      <div class="stat-circle-item" style="text-align: center;">
+        <div style="width: 100%; aspect-ratio: 1/1; background: #F5F3FF; border: 1.5px solid #EDE9FE; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+          <div style="font-size: 18px; font-weight: 900; color: #7C3AED;">4.8</div>
+          <div style="font-size: 8px; color: #7C3AED; font-weight: 800; text-transform: uppercase;">Rating</div>
+        </div>
+      </div>
+
+      <div class="stat-circle-item" style="text-align: center;">
+        <div style="width: 100%; aspect-ratio: 1/1; background: #FEF2F2; border: 1.5px solid #FEE2E2; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+          <div id="stat-validity-pill" style="font-size: 14px; font-weight: 900; color: #EF4444;">0d</div>
+          <div style="font-size: 8px; color: #EF4444; font-weight: 800; text-transform: uppercase;">Valid</div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -189,10 +304,10 @@
       <div style="width:44px;"></div>
     </div>
     <div id="notif-list" style="padding-top:10px;">
-      <div style="text-align: center; padding: 100px 20px;">
-        <div style="font-size: 50px; margin-bottom: 24px;">🔔</div>
-        <h3 style="font-size: 18px; font-weight: 800; color: var(--text-dark);">No New Alerts</h3>
-        <p style="color:var(--text-muted); font-size:14px; margin-top:8px;">Well notify you when new jobs or updates arrive.</p>
+      <div style="text-align: center; padding: 40px 20px; margin: 24px; background: #fff; border-radius: 24px; border: 1.5px dashed var(--border);">
+        <div style="font-size: 44px; margin-bottom: 16px;">🔔</div>
+        <h3 style="font-size: 16px; font-weight: 800; color: var(--text-dark);">No New Alerts</h3>
+        <p style="color:var(--text-muted); font-size:13px; margin-top:6px;">We'll notify you when new jobs or updates arrive.</p>
       </div>
     </div>
   </div>
@@ -204,10 +319,39 @@
       <h1>Available Orders</h1>
       <div style="width:44px;"></div>
     </div>
+    <div id="supplier-promo-wrap" class="supplier-promo-wrap" style="padding: 16px 0; background: #F8FAFC; border-bottom: 1.5px solid var(--border); margin-bottom: 16px; display: none;">
+       <div style="font-size: 12px; font-weight: 800; padding: 0 16px 8px; color: var(--text-dark);">Top Material Suppliers</div>
+       <div id="supplier-list" class="supplier-scroll" style="display: flex; gap: 12px; overflow-x: auto; padding: 0 16px; scrollbar-width: none;"></div>
+    </div>
+    <!-- CATEGORY HUB (Dedicated Page for each service) -->
+    <div id="tab-category-hub" class="page">
+      <div class="page-header" style="background: #fff; border-bottom: 1.5px solid var(--border);">
+         <div class="btn-circle" onclick="switchTab('tab-home')"><svg width="22" height="22" stroke="#1E293B" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+         <h1 id="hub-title">Category Hub</h1>
+         <div style="width:44px;"></div>
+      </div>
+      
+      <!-- Hub Promotions (Materials) -->
+      <div style="padding: 20px 16px 10px;">
+        <h3 id="hub-promo-title" style="font-size: 14px; font-weight: 800; color: var(--text-dark); margin-bottom: 12px;">Top Materials & Suppliers</h3>
+        <div id="hub-supplier-list" class="supplier-scroll" style="display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none;">
+           <!-- Dynamic Supplier Cards -->
+        </div>
+      </div>
+
+      <!-- Hub Work Orders -->
+      <div style="padding: 10px 16px;">
+        <h3 id="hub-work-title" style="font-size: 14px; font-weight: 800; color: var(--text-dark); margin-bottom: 12px;">Available Works</h3>
+        <div id="hub-job-feed">
+           <!-- Dynamic Jobs -->
+        </div>
+      </div>
+    </div>
+
     <div id="job-feed" style="margin-top: 10px;">
-      <div style="text-align:center; padding:100px 20px;">
-        <div style="font-size:32px; animation:spin 2s linear infinite;">⏳</div>
-        <p style="color:var(--text-muted); font-weight:700; margin-top:12px;">Connecting to marketplace...</p>
+      <div style="text-align:center; padding: 40px 20px; margin: 0 24px 24px 24px; background: #fff; border-radius: 24px; border: 1.5px dashed var(--border);">
+        <div style="font-size:40px; animation:spin 2s linear infinite; margin-bottom: 12px;">⏳</div>
+        <p style="color:var(--text-muted); font-weight:700; font-size:14px;">Connecting to marketplace...</p>
       </div>
     </div>
   </div>
@@ -220,10 +364,10 @@
       <div style="width:44px;"></div>
     </div>
     <div id="booked-items" style="padding-top: 10px;">
-      <div style="text-align: center; padding: 100px 20px;">
-        <div style="font-size: 50px; margin-bottom: 24px;">📅</div>
-        <h3 style="font-size: 18px; font-weight: 800; color: var(--text-dark);">No Bookings Yet</h3>
-        <p style="color:var(--text-muted); font-size:14px; margin-top:8px;">Start booking orders from the marketplace.</p>
+      <div style="text-align: center; padding: 40px 20px; margin: 24px; background: #fff; border-radius: 24px; border: 1.5px dashed var(--border);">
+        <div style="font-size: 44px; margin-bottom: 16px;">📅</div>
+        <h3 style="font-size: 16px; font-weight: 800; color: var(--text-dark);">No Bookings Yet</h3>
+        <p style="color:var(--text-muted); font-size:13px; margin-top:6px;">Start booking orders from the marketplace.</p>
       </div>
     </div>
   </div>
@@ -256,7 +400,7 @@
 
       <div class="prof-list-item" onclick="switchTab('tab-profile-edit')">
         <div class="pli-left">
-          <div class="pli-icon" style="background:#E2F5EF; color:#098E6E;">
+          <div class="pli-icon" style="background:#EAE8FF; color:#9086FF;">
              <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
           <div class="pli-txt">My Profile Details</div>
@@ -331,7 +475,7 @@
       <span>Booking</span>
     </button>
     <button class="n-item" id="btn-nav-profile" onclick="switchTab('tab-profile', this)">
-      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <img src="" id="nav-profile-img" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0; transition: 0.25s; border: 1.5px solid var(--border);">
       <span>Profile</span>
     </button>
   </nav>
@@ -459,15 +603,15 @@
   if(!tnpvc_u) window.location.replace('index.html');
 
   // Firebase Init
-  const firebaseConfig = { apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU", authDomain: "tnpvc-connect-hub.firebaseapp.com", projectId: "tnpvc-connect-hub", storageBucket: "tnpvc-connect-hub.firebasestorage.app", messagingSenderId: "919957830993", appId: "1:919957830993:web:e1a2036a4258f683826770" };
+  const firebaseConfig = { apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU", authDomain: "tnpvc-project.firebaseapp.com", projectId: "tnpvc-project", storageBucket: "tnpvc-project.firebasestorage.app", messagingSenderId: "919957830993", appId: "1:919957830993:web:e1a2036a4258f683826770" };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
   // Populate UI
   document.getElementById('hdr-name').textContent = tnpvc_u.name.split(' ')[0];
   document.getElementById('hdr-loc').textContent = (tnpvc_u.district || "TN") + ", Tamil Nadu";
-  const avatar = tnpvc_u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(tnpvc_u.name)}&background=098E6E&color=fff`;
-  document.getElementById('hdr-avatar').src = avatar;
+  const avatar = tnpvc_u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(tnpvc_u.name)}&background=9086FF&color=fff`;
+  if(document.getElementById('nav-profile-img')) document.getElementById('nav-profile-img').src = avatar;
   document.getElementById('prof-img-page').src = avatar;
   document.getElementById('user-name-page').textContent = tnpvc_u.name;
 
@@ -503,7 +647,7 @@
     if(tabId === 'tab-profile-edit') {
        document.getElementById('edit-name').value = tnpvc_u.name;
        document.getElementById('edit-dist').value = tnpvc_u.district || "Chennai";
-       document.getElementById('edit-img-preview').src = document.getElementById('hdr-avatar').src;
+       document.getElementById('edit-img-preview').src = document.getElementById('prof-img-page').src;
     }
     if(tabId === 'tab-pay-history') renderPayments();
   }
@@ -556,7 +700,7 @@
         setTimeout(() => window.location.reload(), 2000);
       },
       "prefill": { "name": tnpvc_u.name, "contact": tnpvc_u.phone },
-      "theme": { "color": "#098E6E" }
+      "theme": { "color": "#9086FF" }
     };
     const rzp = new Razorpay(options);
     rzp.open();
@@ -587,27 +731,76 @@
      }
   }
 
-  // Jobs Listener
-  db.collection("jobs").where("status", "==", "Active").onSnapshot(snap => {
-    window.allJobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
-    window.jobs_cache = window.allJobs;
-    if(document.getElementById('tab-orders').classList.contains('active')) renderJobs();
-  });
+  // Jobs Listener (High Power Real-time Delivery & Toast Alert)
+  let lastSeenJobId = null;
+  db.collection("jobs")
+    .where("district", "==", tnpvc_u.district)
+    .onSnapshot(snap => {
+      let rawJobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+      
+      // Native filtering to completely bypass Firestore "Composite Index" silent failures
+      let activeJobs = rawJobs.filter(job => job.status === "Active");
+      window.allJobs = activeJobs.sort((a, b) => b.createdAt - a.createdAt);
+      window.jobs_cache = window.allJobs;
+      
+      // Powerful logic to alert user if a truly NEW job is found
+      if(snap.docs.length > 0 && lastSeenJobId && snap.docs[0].id !== lastSeenJobId) {
+        showToast("🔥 NEW JOB POSTED! Check Marketplace.");
+        if(typeof navigator.vibrate === "function") navigator.vibrate(200); // Pulse effect
+      }
+      if(snap.docs.length > 0) lastSeenJobId = snap.docs[0].id;
+      else if(!lastSeenJobId) lastSeenJobId = "none"; // Init
 
-  function renderJobs() {
-    const feed = document.getElementById('job-feed');
-    const jobs = (window.jobs_cache || []).filter(j => j.district === tnpvc_u.district).reverse();
-    if(jobs.length === 0 && window.jobs_cache) {
-      feed.innerHTML = `<div style="text-align:center; padding:60px 20px; background:#fff; border-radius:24px; margin:20px; border:1.5px dashed #e2e8f0;"><div style="font-size:40px;">📍</div><h3 style="margin:10px 0 5px;">No Orders in ${tnpvc_u.district}</h3><p style="font-size:12px; color:#64748b;">Try checking other districts later.</p></div>`;
+      if(document.getElementById('tab-orders').classList.contains('active')) renderJobs();
+    });
+
+  function filterJobsMarket(cat) {
+    windowCategoryFilter = cat;
+    switchTab('tab-category-hub');
+    
+    // Update Hub UI
+    document.getElementById('hub-title').textContent = cat;
+    document.getElementById('hub-promo-title').textContent = `Best Materials for ${cat}`;
+    document.getElementById('hub-work-title').textContent = `Latest ${cat} Work Orders`;
+    
+    renderCategoryHub();
+  }
+
+  function renderCategoryHub() {
+    const supplierList = document.getElementById('hub-supplier-list');
+    const jobList = document.getElementById('hub-job-feed');
+    
+    // 1. Render Material Suppliers (Based on Category)
+    const suppliers = [
+      { name: "S.S hardware", tag: "Premium Fittings", icon: "🛠️" },
+      { name: "Glass Mart", tag: "8mm Tough Glass", icon: "🪟" },
+      { name: "Alu-Profiles", tag: "Industrial Grade", icon: "🏢" },
+      { name: "Fast-Fix", tag: "Gaskets & Tools", icon: "🔗" }
+    ];
+    
+    supplierList.innerHTML = suppliers.map(s => `
+      <div class="s-card" style="flex:0 0 150px; background:#fff; border:1.5px solid var(--border); border-radius:18px; padding:16px; text-align:center; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <div class="s-logo" style="width:48px; height:48px; border-radius:12px; background:var(--primary-light); margin:0 auto 10px; display:flex; align-items:center; justify-content:center; font-size:24px;">${s.icon}</div>
+        <div class="s-name" style="font-size:12px; font-weight:800; color:var(--text-dark);">${s.name}</div>
+        <div class="s-tag" style="font-size:10px; font-weight:700; color:var(--primary); text-transform:uppercase; margin-top:2px;">${s.tag}</div>
+        <button class="s-btn" style="margin-top:12px; width:100%; border:none; background:#F1F5F9; color:var(--text-dark); font-size:11px; font-weight:800; padding:8px; border-radius:10px; cursor:pointer;" onclick="showToast('Materials Catalog Opening...')">View Details</button>
+      </div>
+    `).join('');
+
+    // 2. Render Jobs for this Category
+    let jobs = (window.jobs_cache || []).filter(j => j.district === tnpvc_u.district && j.category === windowCategoryFilter).reverse();
+    
+    if(jobs.length === 0) {
+      jobList.innerHTML = `<div style="text-align:center; padding:40px; background:#fff; border-radius:24px; border:1.5px dashed var(--border);"><p style="font-size:13px; color:var(--text-muted); font-weight:700;">No active ${windowCategoryFilter} orders in ${tnpvc_u.district} right now.</p></div>`;
       return;
     }
-    if(!window.jobs_cache) return;
-    feed.innerHTML = jobs.map(j => `
-      <div class="job-item" onclick="openJob('${j.id}')">
-        <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=098E6E&color=fff'}">
+    
+    jobList.innerHTML = jobs.map(j => `
+      <div class="job-item" onclick="openJob('${j.id}')" style="margin-bottom:12px;">
+        <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=9086FF&color=fff'}">
         <div class="j-info">
           <div class="j-title">${j.title}</div>
-          <div class="j-meta">
+          <div class="j-meta" style="margin-top:4px;">
             <span class="j-price">₹${j.budget}</span>
             <span class="j-loc">${j.area}</span>
           </div>
@@ -616,13 +809,66 @@
     `).join('');
   }
 
+  function renderJobs() {
+    const feed = document.getElementById('job-feed');
+    const supplierWrap = document.getElementById('supplier-promo-wrap');
+    
+    // Show Supplier Promos if a category is selected
+    if(windowCategoryFilter && supplierWrap) {
+      supplierWrap.style.display = 'block';
+      const suppliers = [
+        { name: "Sai Profiles", tag: "UPVC Raw", icon: "🏢" },
+        { name: "Durga Hardware", tag: "Fittings", icon: "🛠️" },
+        { name: "Reliance Glass", tag: "Premium Glass", icon: "🪟" },
+        { name: "Supreme Pipes", tag: "Gaskets & Seals", icon: "🔗" }
+      ];
+      document.getElementById('supplier-list').innerHTML = suppliers.map(s => `
+        <div class="s-card" style="flex:0 0 140px; background:#fff; border:1.5px solid var(--border); border-radius:16px; padding:12px; text-align:center;">
+          <div class="s-logo" style="width:44px; height:44px; border-radius:10px; background:var(--primary-light); margin:0 auto 8px; display:flex; align-items:center; justify-content:center; font-size:20px;">${s.icon}</div>
+          <div class="s-name" style="font-size:11px; font-weight:800; color:var(--text-dark);">${s.name}</div>
+          <div class="s-tag" style="font-size:9px; font-weight:700; color:var(--primary); text-transform:uppercase;">${s.tag}</div>
+          <button class="s-btn" style="margin-top:8px; width:100%; border:none; background:#F1F5F9; color:var(--text-dark); font-size:10px; font-weight:800; padding:6px; border-radius:8px; cursor:pointer;" onclick="showToast('Contacting Supplier...')">Contact</button>
+        </div>
+      `).join('');
+    } else if(supplierWrap) {
+      supplierWrap.style.display = 'none';
+    }
+
+    let jobs = (window.jobs_cache || []).filter(j => j.district === tnpvc_u.district).reverse();
+    if(windowCategoryFilter) jobs = jobs.filter(j => j.category === windowCategoryFilter);
+    
+    if(jobs.length === 0 && window.jobs_cache) {
+      feed.innerHTML = `<div style="text-align:center; padding:40px 20px; background:#fff; border-radius:24px; margin:20px 24px; border:1.5px dashed #e2e8f0;"><div style="font-size:44px; margin-bottom: 12px;">📍</div><h3 style="margin:0 0 5px; font-size:16px;">No Orders Found</h3><p style="font-size:13px; color:#64748b;">${windowCategoryFilter ? `There are no active orders for '${windowCategoryFilter}' in your district.` : `No active orders currently available in ${tnpvc_u.district}.`}</p>
+      ${windowCategoryFilter ? `<button onclick="filterJobsMarket(null)" style="margin-top:16px; padding:10px 24px; border-radius:100px; background:#F8FAFC; border:1.5px solid var(--border); font-weight:700; color:var(--text-dark); cursor:pointer;">Clear Filter</button>` : ''}
+      </div>`;
+      return;
+    }
+    if(!window.jobs_cache) return;
+    
+    feed.innerHTML = `
+      ${windowCategoryFilter ? `<div style="text-align:right; margin-bottom:12px; margin-right:16px;"><span onclick="filterJobsMarket(null)" style="font-size:12px; font-weight:700; color:#DC2626; cursor:pointer; background:#FEE2E2; padding:6px 12px; border-radius:100px;">Clear Filter ✕</span></div>` : ''}
+      ${jobs.map(j => `
+      <div class="job-item" onclick="openJob('${j.id}')">
+        <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=9086FF&color=fff'}">
+        <div class="j-info">
+          <div class="j-title">${j.title}</div>
+          ${j.category ? `<div style="font-size:10px; font-weight:800; background:var(--primary-light); color:var(--primary); display:inline-block; padding:4px 8px; border-radius:8px; margin-top:4px;">${j.category}</div>` : ''}
+          <div class="j-meta" style="margin-top:6px;">
+            <span class="j-price">₹${j.budget}</span>
+            <span class="j-loc">${j.area}</span>
+          </div>
+        </div>
+      </div>
+    `).join('')}`;
+  }
+
   let currentJobId = null;
   function openJob(id) {
     const job = (window.allJobs || []).find(j => j.id == id);
     if(!job) return;
     currentJobId = id;
     document.getElementById('dt-title').textContent = job.title;
-    document.getElementById('dt-img').src = job.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(job.title)+'&background=098E6E&color=fff';
+    document.getElementById('dt-img').src = job.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(job.title)+'&background=9086FF&color=fff';
     document.getElementById('dt-con').textContent = "Post by " + job.contractor;
     document.getElementById('dt-val').textContent = "₹" + job.budget;
     document.getElementById('dt-desc').textContent = job.desc || "Skilled labor required for " + job.title;
@@ -667,7 +913,7 @@
     }
     container.innerHTML = myBookings.map(j => `
       <div class="job-item">
-        <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=098E6E&color=fff'}">
+        <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=9086FF&color=fff'}">
         <div class="j-info">
           <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <div class="j-title">${j.title}</div>
@@ -680,19 +926,7 @@
     document.getElementById('stat-works').textContent = myBookings.length;
   }
 
-  function renderJobs() {
-    const list = document.getElementById('jobs-list');
-    const jobs = window.allJobs || [];
-    if(jobs.length === 0) { list.innerHTML = '<p style="text-align:center; padding:40px; color:#64748B;">No jobs in your district.</p>'; return; }
-    list.innerHTML = jobs.map(j => `
-      <div class="job-item" onclick="openJob('${j.id}')">
-        <div class="j-info">
-          <div><div class="j-title">${j.title}</div><div class="j-loc">📍 ${j.area}</div></div>
-          <div class="j-meta"><span class="j-price">₹${j.budget}</span><span class="j-type">Urgent</span></div>
-        </div>
-      </div>
-    `).join('');
-  }
+
 
   // ADMIN CONFIG LISTENER
   db.collection('app_config').doc('promo').onSnapshot(doc => {
@@ -724,7 +958,7 @@
         setTimeout(() => window.location.reload(), 2000);
       },
       "prefill": { "name": tnpvc_u.name },
-      "theme": { "color": "#098E6E" }
+      "theme": { "color": "#9086FF" }
     };
     const rzp = new Razorpay(options);
     rzp.open();
@@ -746,13 +980,31 @@
       </div>`;
     }).join('') + `
       <div class="p-card no-txt" style="background-image: url('bbbbb.jpg');"></div>
-      <div class="p-card" style="background: linear-gradient(135deg, #098E6E, #16202A);">
+      <div class="p-card" style="background: linear-gradient(135deg, #9086FF, #16202A);">
         <div class="p-card-tag">NEW</div>
         <h4>Premium Access</h4>
         <p>Get unlimited leads today</p>
       </div>
     `;
   });
+
+  // AUTO-SWIPE CAROUSEL LOGIC (5-Second Swipe)
+  (function startBannerCarousel() {
+    const scroller = document.querySelector('.home-promo-strip');
+    if(!scroller) return;
+    
+    let currentPos = 0;
+    const scrollCount = 3; // Number of hero banners
+
+    setInterval(() => {
+      currentPos = (currentPos + 1) % scrollCount;
+      const cardWidth = scroller.offsetWidth; 
+      scroller.scrollTo({
+        left: currentPos * cardWidth,
+        behavior: 'smooth'
+      });
+    }, 5000);
+  })();
 </script>
 
 </body>

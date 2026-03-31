@@ -6,12 +6,191 @@
 <title>TNPVC Connect Hub</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
   <!-- Firebase SDKs (Compat Version) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
+
+  /* ===== SPLASH SCREEN — NEW STYLE ===== */
+  #splash-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #F4F0FF;
+    overflow: hidden;
+    transition: opacity 0.7s ease, visibility 0.7s ease;
+  }
+  #splash-screen.hide {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* Background decorative blobs */
+  .splash-blob {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .splash-blob-1 {
+    width: 320px; height: 320px;
+    top: -80px; right: -80px;
+    background: radial-gradient(circle, rgba(130,60,255,0.18) 0%, transparent 70%);
+  }
+  .splash-blob-2 {
+    width: 260px; height: 260px;
+    bottom: -60px; left: -60px;
+    background: radial-gradient(circle, rgba(80,30,200,0.12) 0%, transparent 70%);
+  }
+  .splash-blob-3 {
+    width: 180px; height: 180px;
+    bottom: 80px; right: 30px;
+    background: radial-gradient(circle, rgba(200,150,255,0.15) 0%, transparent 70%);
+  }
+
+  /* Ring pulse container */
+  .splash-ring-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 220px;
+    height: 220px;
+    margin-bottom: 28px;
+  }
+  .splash-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid rgba(106, 31, 194, 0.25);
+    animation: ringPulse 2.4s ease-out infinite;
+  }
+  .splash-ring:nth-child(1) { width: 180px; height: 180px; animation-delay: 0s; }
+  .splash-ring:nth-child(2) { width: 210px; height: 210px; animation-delay: 0.6s; }
+  .splash-ring:nth-child(3) { width: 240px; height: 240px; animation-delay: 1.2s; }
+  @keyframes ringPulse {
+    0%   { transform: scale(0.7); opacity: 0.8; }
+    100% { transform: scale(1.2); opacity: 0; }
+  }
+
+  /* Logo image */
+  .splash-logo-img {
+    position: relative;
+    z-index: 2;
+    width: 150px;
+    height: 150px;
+    object-fit: contain;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 8px 40px rgba(106,31,194,0.22), 0 2px 12px rgba(0,0,0,0.08);
+    animation: logoEntry 0.8s cubic-bezier(0.175,0.885,0.32,1.275) both;
+    overflow: hidden;
+  }
+  /* Shimmer sweep over logo */
+  .splash-logo-img::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: shimmer 2s 0.5s infinite;
+    border-radius: 50%;
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes logoEntry {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  /* Text block */
+  .splash-text-block {
+    text-align: center;
+    animation: textRise 0.6s 0.4s both ease-out;
+  }
+  @keyframes textRise {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .splash-brand {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: #1A0044;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .splash-brand span { color: #6A1FC2; }
+  .splash-tagline {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #8B7BAB;
+    margin-top: 6px;
+    letter-spacing: 0.03em;
+  }
+
+  /* Bottom progress bar */
+  .splash-progress-wrap {
+    position: absolute;
+    bottom: 52px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    animation: fadeInDots 0.5s 0.6s both;
+  }
+  .splash-progress-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(106,31,194,0.15);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .splash-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6A1FC2, #A855F7);
+    border-radius: 99px;
+    animation: progressFill 2.2s 0.3s ease-out forwards;
+  }
+  @keyframes progressFill {
+    0%   { width: 0%; }
+    80%  { width: 90%; }
+    100% { width: 100%; }
+  }
+  @keyframes fadeInDots {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .splash-loading-label {
+    text-align: center;
+    margin-top: 8px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #A08CC0;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Version badge */
+  .splash-version {
+    position: absolute;
+    bottom: 18px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 10px;
+    color: #C5B8E0;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
   :root {
     --brand: #0085FF;
     --brand-dark: #0066CC;
@@ -227,9 +406,266 @@
     text-align: center; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
   }
   .m-role-btn.active { border-color: var(--brand); background: #F0F7FF; color: var(--brand); }
+
+  /* ===== PREMIUM PROFILE SCREEN ===== */
+
+  /* Toggle Switch */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: #fff;
+    border-radius: 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+  }
+  .toggle-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1A1A2E;
+  }
+  .toggle-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+  .toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { display: none; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: #D1D5DB;
+    border-radius: 99px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    width: 22px; height: 22px;
+    top: 3px; left: 3px;
+    background: #FFF;
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  .toggle-switch input:checked + .toggle-track { background: #0085FF; }
+  .toggle-switch input:checked + .toggle-track::after { transform: translateX(22px); }
+
+  /* Profile Screen Layout */
+  #screen-profile {
+    background: #F2F4F8 !important;
+    padding: 0 !important;
+    overflow-y: auto !important;
+    justify-content: flex-start !important;
+  }
+  .profile-header-banner {
+    background: linear-gradient(135deg, #0055CC 0%, #0085FF 100%);
+    padding: 48px 24px 70px;
+    position: relative;
+    text-align: center;
+  }
+  .profile-header-banner h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+  .profile-header-banner p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+    font-weight: 500;
+  }
+  /* Step pills */
+  .profile-steps {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  .step-pill {
+    height: 4px;
+    border-radius: 99px;
+    background: rgba(255,255,255,0.3);
+    transition: all 0.3s;
+  }
+  .step-pill.active { background: #fff; width: 24px; }
+  .step-pill:not(.active) { width: 8px; }
+
+  /* Avatar floating out of header */
+  .profile-avatar-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: -48px;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 5;
+  }
+  .profile-avatar-btn {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 6px 24px rgba(0,85,255,0.18), 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid #fff;
+    overflow: hidden;
+  }
+  .profile-avatar-btn svg { opacity: 0.4; }
+  .profile-avatar-btn img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    display: none;
+  }
+  .avatar-edit-badge {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: #0085FF;
+    border: 2px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .avatar-sub {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 20px;
+  }
+
+  /* Form body */
+  .profile-form-body {
+    padding: 0 16px 32px;
+  }
+  /* Card section */
+  .pf-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 6px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  }
+  .pf-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 0 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #0085FF;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    border-bottom: 1px solid #F3F4F6;
+    margin-bottom: 4px;
+  }
+  .pf-card-title svg { flex-shrink: 0; }
+  /* Modern input row */
+  .pf-input-row {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 0;
+    border-bottom: 1px solid #F3F4F6;
+  }
+  .pf-input-row:last-child { border-bottom: none; }
+  .pf-input-row label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #9CA3AF;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .pf-input-row input, .pf-input-row select {
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111;
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+    padding: 0;
+    line-height: 1.4;
+  }
+  .pf-input-row select { cursor: pointer; }
+  .pf-input-row input::placeholder { color: #C4C9D4; font-weight: 500; }
+  .pf-input-row input:focus { color: #0085FF; }
+
+  /* Save button */
+  .btn-profile-save {
+    width: 100%;
+    padding: 17px;
+    border-radius: 16px;
+    border: none;
+    background: linear-gradient(135deg, #0055CC, #0085FF);
+    color: #fff;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-top: 8px;
+    box-shadow: 0 6px 20px rgba(0,133,255,0.3);
+    letter-spacing: -0.01em;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-profile-save:active {
+    transform: scale(0.97);
+    box-shadow: 0 2px 8px rgba(0,133,255,0.2);
+  }
+  .section-divider { display: none; }
 </style>
 </head>
 <body>
+
+  <!-- ===== SPLASH SCREEN — NEW STYLE ===== -->
+  <div id="splash-screen">
+    <!-- Decorative background blobs -->
+    <div class="splash-blob splash-blob-1"></div>
+    <div class="splash-blob splash-blob-2"></div>
+    <div class="splash-blob splash-blob-3"></div>
+
+    <!-- Pulsing rings + Logo -->
+    <div class="splash-ring-wrap">
+      <div class="splash-ring"></div>
+      <div class="splash-ring"></div>
+      <div class="splash-ring"></div>
+      <img src="logo.png" alt="TN-PVC Interiors" class="splash-logo-img">
+    </div>
+
+    <!-- Brand text -->
+    <div class="splash-text-block">
+      <div class="splash-brand">TN-PVC <span>Interiors</span></div>
+      <div class="splash-tagline">Tamil Nadu's #1 PVC Professional Network</div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="splash-progress-wrap">
+      <div class="splash-progress-track">
+        <div class="splash-progress-bar"></div>
+      </div>
+      <div class="splash-loading-label">Loading...</div>
+    </div>
+
+    <div class="splash-version">v2.0 · TN-PVC Interiors</div>
+  </div>
 
   <div class="app-container">
     
@@ -296,102 +732,146 @@
     </div>
 
     <!-- PROFILE SETUP SCREEN -->
-    <div class="screen hidden" id="screen-profile" style="padding-top: 30px; overflow-y: auto; justify-content: flex-start;">
-      <div class="signin-header" style="margin-bottom: 25px;">
-        <h1 style="font-size: 28px;">Complete Profile</h1>
-        <p>Please provide your details to continue</p>
+    <div class="screen hidden" id="screen-profile">
+
+      <!-- Gradient Banner Header -->
+      <div class="profile-header-banner">
+        <h1>Complete Profile</h1>
+        <p>Fill in your details to get started</p>
+        <div class="profile-steps">
+          <div class="step-pill active"></div>
+          <div class="step-pill"></div>
+          <div class="step-pill"></div>
+        </div>
       </div>
 
-      <div class="form-wrap" style="flex:1;">
+      <!-- Avatar floating over banner -->
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar-btn" onclick="document.getElementById('p-photo').click()">
+          <!-- Camera icon -->
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="#9CA3AF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="12" cy="13" r="4" stroke="#9CA3AF" stroke-width="1.8" fill="none"/>
+          </svg>
+          <img id="p-photo-preview" src="" alt="">
+          <input type="file" id="p-photo" accept="image/*" style="display:none;" onchange="previewPhoto(event)">
+          <div class="avatar-edit-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="avatar-sub">Tap to upload photo</div>
+
+      <!-- Form cards -->
+      <div class="profile-form-body">
         <form id="profile-form" onsubmit="return false;">
-          
-          <div style="display:flex; justify-content:center; margin-bottom:24px;">
-            <div style="position:relative; width:85px; height:85px; border-radius:50%; background:#F0F9FF; display:flex; align-items:center; justify-content:center; border: 2px dashed var(--brand); cursor:pointer;" onclick="document.getElementById('p-photo').click()">
-              <span style="font-size:28px;">📷</span>
-              <input type="file" id="p-photo" accept="image/*" style="display:none;" onchange="previewPhoto(event)">
-              <img id="p-photo-preview" src="" style="width:100%; height:100%; border-radius:50%; object-fit:cover; position:absolute; inset:0; display:none;">
+
+          <!-- Personal Info Card -->
+          <div class="pf-card">
+            <div class="pf-card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2.2" stroke-linecap="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Personal Info
+            </div>
+            <div class="pf-input-row">
+              <label>Full Name *</label>
+              <input type="text" id="p-name" placeholder="e.g. Ravi Kumar" required>
+            </div>
+            <div class="pf-input-row">
+              <label>Phone Number *</label>
+              <input type="tel" id="p-phone" placeholder="9876543210" required maxlength="10">
+            </div>
+            <div class="pf-input-row">
+              <label>Aadhaar Number *</label>
+              <input type="text" id="p-aadhaar" placeholder="12-digit Aadhaar" required maxlength="12" inputmode="numeric">
+            </div>
+            <div class="pf-input-row">
+              <label>District *</label>
+              <select id="p-district" required>
+                <option value="" disabled selected>Select your district</option>
+                <option>Ariyalur</option><option>Chengalpattu</option><option>Chennai</option>
+                <option>Coimbatore</option><option>Cuddalore</option><option>Dharmapuri</option>
+                <option>Dindigul</option><option>Erode</option><option>Kallakurichi</option>
+                <option>Kanchipuram</option><option>Kanyakumari</option><option>Karur</option>
+                <option>Krishnagiri</option><option>Madurai</option><option>Mayiladuthurai</option>
+                <option>Nagapattinam</option><option>Namakkal</option><option>Nilgiris</option>
+                <option>Perambalur</option><option>Pudukkottai</option><option>Ramanathapuram</option>
+                <option>Ranipet</option><option>Salem</option><option>Sivaganga</option>
+                <option>Tenkasi</option><option>Thanjavur</option><option>Theni</option>
+                <option>Thoothukudi</option><option>Tiruchirappalli</option><option>Tirunelveli</option>
+                <option>Tirupathur</option><option>Tiruppur</option><option>Tiruvallur</option>
+                <option>Tiruvannamalai</option><option>Tiruvarur</option><option>Vellore</option>
+                <option>Viluppuram</option><option>Virudhunagar</option>
+              </select>
+            </div>
+            <div class="pf-input-row">
+              <label>Full Address *</label>
+              <input type="text" id="p-address" placeholder="Door No., Street, City" required>
             </div>
           </div>
 
-          <div class="input-field">
-            <label>Full Name</label>
-            <input type="text" id="p-name" placeholder="Enter name" required>
+          <!-- Business Info Card -->
+          <div class="pf-card">
+            <div class="pf-card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2.2" stroke-linecap="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+              Business Info
+            </div>
+            <div class="pf-input-row">
+              <label>Store / Business Name</label>
+              <input type="text" id="p-store-name" placeholder="e.g. Ravi PVC Interiors">
+            </div>
+            <div class="pf-input-row">
+              <label>Store Address</label>
+              <input type="text" id="p-store-address" placeholder="Shop No., Street, City">
+            </div>
+            <div class="pf-input-row">
+              <label>PAN Card Number</label>
+              <input type="text" id="p-pan" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase;">
+            </div>
+            <div class="pf-input-row">
+              <label>Experience (Years)</label>
+              <input type="number" id="p-experience" placeholder="e.g. 5" min="0" max="60">
+            </div>
           </div>
-          <div class="input-field">
-            <label>Phone Number</label>
-            <input type="text" id="p-phone" placeholder="e.g. 9876543210" required>
+
+          <!-- Personal Declaration Card -->
+          <div class="pf-card">
+            <div class="pf-card-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2.2" stroke-linecap="round">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+              Personal Declaration
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Drinking Habit</div>
+                <div class="toggle-sub">Do you consume alcohol?</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="p-drinking">
+                <span class="toggle-track"></span>
+              </label>
+            </div>
           </div>
-          <div class="input-field">
-            <label>Aadhaar Number</label>
-            <input type="text" id="p-aadhaar" placeholder="12-digit Aadhaar No." required maxlength="12">
-          </div>
-          <div class="input-field">
-            <label>District</label>
-            <select id="p-district" required style="width: 100%; padding: 10px 0; border: none; border-bottom: 1.5px solid #EEE; font-family: inherit; font-size: 16px; color: var(--text); background: transparent; outline: none;">
-              <option value="" disabled selected>Select District</option>
-              <option value="Ariyalur">Ariyalur</option>
-              <option value="Chengalpattu">Chengalpattu</option>
-              <option value="Chennai">Chennai</option>
-              <option value="Coimbatore">Coimbatore</option>
-              <option value="Cuddalore">Cuddalore</option>
-              <option value="Dharmapuri">Dharmapuri</option>
-              <option value="Dindigul">Dindigul</option>
-              <option value="Erode">Erode</option>
-              <option value="Kallakurichi">Kallakurichi</option>
-              <option value="Kanchipuram">Kanchipuram</option>
-              <option value="Kanyakumari">Kanyakumari</option>
-              <option value="Karur">Karur</option>
-              <option value="Krishnagiri">Krishnagiri</option>
-              <option value="Madurai">Madurai</option>
-              <option value="Mayiladuthurai">Mayiladuthurai</option>
-              <option value="Nagapattinam">Nagapattinam</option>
-              <option value="Namakkal">Namakkal</option>
-              <option value="Nilgiris">Nilgiris</option>
-              <option value="Perambalur">Perambalur</option>
-              <option value="Pudukkottai">Pudukkottai</option>
-              <option value="Ramanathapuram">Ramanathapuram</option>
-              <option value="Ranipet">Ranipet</option>
-              <option value="Salem">Salem</option>
-              <option value="Sivaganga">Sivaganga</option>
-              <option value="Tenkasi">Tenkasi</option>
-              <option value="Thanjavur">Thanjavur</option>
-              <option value="Theni">Theni</option>
-              <option value="Thoothukudi">Thoothukudi</option>
-              <option value="Tiruchirappalli">Tiruchirappalli</option>
-              <option value="Tirunelveli">Tirunelveli</option>
-              <option value="Tirupathur">Tirupathur</option>
-              <option value="Tiruppur">Tiruppur</option>
-              <option value="Tiruvallur">Tiruvallur</option>
-              <option value="Tiruvannamalai">Tiruvannamalai</option>
-              <option value="Tiruvarur">Tiruvarur</option>
-              <option value="Vellore">Vellore</option>
-              <option value="Viluppuram">Viluppuram</option>
-              <option value="Virudhunagar">Virudhunagar</option>
-            </select>
-          </div>
-          <div class="input-field">
-            <label>Full Address</label>
-            <input type="text" id="p-address" placeholder="City or Door Address" required>
-          </div>
-          
-          <button type="button" class="btn-primary" id="btn-save-profile" onclick="saveProfile()" style="margin-top:15px;">Confirm</button>
+
+          <button type="button" class="btn-profile-save" id="btn-save-profile" onclick="saveProfile()">
+            Save &amp; Continue &#x2192;
+          </button>
+
         </form>
       </div>
     </div>
 
-    <!-- PAYMENT SCREEN -->
-    <div class="screen hidden" id="screen-payment" style="text-align: center; justify-content: center; padding: 24px; background: #F8F9FB; align-items: center;">
-      <div style="background: white; border-radius: 24px; padding: 40px 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); max-width: 400px; width: 100%;">
-        <div style="font-size: 50px; margin-bottom: 20px;">💎</div>
-        <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 12px; color: #16202A;">Premium Access</h2>
-        <p style="color: #6B7280; font-size: 14px; margin-bottom: 24px; line-height: 1.5; font-weight: 500;">To use the TNPVC Connect Hub and connect with top professionals, a monthly subscription is required.</p>
-        <div style="background: #E2F5EF; color: #098E6E; font-size: 36px; font-weight: 800; padding: 20px; border-radius: 20px; margin-bottom: 24px; border: 1.5px solid #098E6E;">
-          ₹1,000<span style="font-size: 16px; font-weight: 600; opacity: 0.8;"> /mo</span>
-        </div>
-        <button class="btn-primary" style="background: #098E6E; margin-bottom: 12px; font-size: 16px; padding: 16px; font-weight: 800;" onclick="processPayment()">Pay Securely Now</button>
-        <button class="btn-primary" style="background: transparent; border: 2px solid #E5E7EB; color: #6B7280; font-size: 15px; padding: 14px; font-weight: 700;" onclick="cancelPayment()">Cancel</button>
-      </div>
-    </div>
+
 
   </div>
 
@@ -416,6 +896,28 @@
   </div>
 
   <script>
+    // ===== SPLASH SCREEN LOGIC =====
+    (function initSplash() {
+      const splash = document.getElementById('splash-screen');
+      const MIN_SHOW = 2500; // ms
+      const startTime = Date.now();
+
+      function hideSplash() {
+        const elapsed = Date.now() - startTime;
+        const delay = Math.max(0, MIN_SHOW - elapsed);
+        setTimeout(() => {
+          splash.classList.add('hide');
+          setTimeout(() => { splash.remove(); }, 650);
+        }, delay);
+      }
+
+      // Store the hideSplash reference globally so session check can trigger it
+      window._hideSplash = hideSplash;
+
+      // Fallback: always hide after MAX_SHOW
+      setTimeout(hideSplash, 3500);
+    })();
+
     // --- INSTANT SESSION RECOVERY ---
     (function checkSession() {
       try {
@@ -424,7 +926,8 @@
           const u = JSON.parse(uStr);
           if (u && u.role) {
             if (u.profileCompleted && u.isSubscribed) {
-              // Redirect instantly, do not wait
+              // Hide splash then redirect
+              if(window._hideSplash) window._hideSplash();
               window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
             } else if (u.profileCompleted) {
               // Direct to App, skip payment
@@ -453,9 +956,9 @@
     // --- FIREBASE INITIALIZATION ---
     const firebaseConfig = {
       apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU",
-      authDomain: "tnpvc-connect-hub.firebaseapp.com",
-      projectId: "tnpvc-connect-hub",
-      storageBucket: "tnpvc-connect-hub.firebasestorage.app",
+      authDomain: "tnpvc-project.firebaseapp.com",
+      projectId: "tnpvc-project",
+      storageBucket: "tnpvc-project.firebasestorage.app",
       messagingSenderId: "919957830993",
       appId: "1:919957830993:web:e1a2036a4258f683826770",
       measurementId: "G-B69Q2TRS5H"
@@ -524,7 +1027,6 @@
       document.getElementById('screen-auth').classList.add('hidden');
       document.getElementById('modal-role').classList.add('hidden');
       document.getElementById('screen-profile').classList.add('hidden');
-      if(document.getElementById('screen-payment')) document.getElementById('screen-payment').classList.add('hidden');
 
       if (!userData.profileCompleted) {
         document.getElementById('screen-profile').classList.remove('hidden');
@@ -542,9 +1044,14 @@
         const aadhaar = document.getElementById('p-aadhaar').value.trim();
         const district = document.getElementById('p-district').value;
         const addr = document.getElementById('p-address').value.trim();
+        const storeName = document.getElementById('p-store-name').value.trim();
+        const storeAddress = document.getElementById('p-store-address').value.trim();
+        const pan = document.getElementById('p-pan').value.trim().toUpperCase();
+        const experience = document.getElementById('p-experience').value.trim();
+        const drinking = document.getElementById('p-drinking').checked;
 
         if(!name || !phone || !aadhaar || !district || !addr) {
-           alert("Please fill all the details to continue!");
+           alert("Please fill all required details (Name, Phone, Aadhaar, District, Address)!");
            return;
         }
 
@@ -554,8 +1061,13 @@
         u.aadhaar = aadhaar;
         u.district = district;
         u.address = addr;
+        u.storeName = storeName;
+        u.storeAddress = storeAddress;
+        u.pan = pan;
+        u.experience = experience;
+        u.drinkingHabit = drinking ? 'Yes' : 'No';
         u.profileCompleted = true;
-        u.isSubscribed = true; // Skip payment
+        u.isSubscribed = true;
         u.updatedAt = new Date().toISOString();
         
         localStorage.setItem('tnpvc_user', JSON.stringify(u));
@@ -579,47 +1091,7 @@
       }
     };
 
-    window.processPayment = function() {
-      let uStr = localStorage.getItem('tnpvc_user');
-      if(uStr) {
-        let u = JSON.parse(uStr);
-        
-        const options = {
-          "key": "rzp_test_placeholder", 
-          "amount": 1000 * 100,
-          "currency": "INR",
-          "name": "TNPVC Connect Hub",
-          "description": "Monthly Subscription",
-          "handler": function (response) {
-            u.isSubscribed = true;
-            let validDate = new Date();
-            validDate.setDate(validDate.getDate() + 30);
-            u.validUntil = validDate.toISOString();
-            u.paymentId = response.razorpay_payment_id;
-            
-            localStorage.setItem('tnpvc_user', JSON.stringify(u));
-            
-            // SYNC PAYMENT STATUS TO CLOUD
-            const userRef = db.collection('users').doc(u.phone || u.email);
-            userRef.set(u, { merge: true }).then(() => {
-               window.proceedToApp(u);
-            }).catch(e => {
-               console.error("Cloud Payment Sync Failed", e);
-               window.proceedToApp(u); // Proceed anyway as local is updated
-            });
-          },
-          "prefill": { "name": u.name, "email": u.email, "contact": u.phone },
-          "theme": { "color": "#098E6E" }
-        };
-        const rzp = new Razorpay(options);
-        rzp.open();
-      }
-    };
 
-    window.cancelPayment = function() {
-      localStorage.removeItem('tnpvc_user');
-      window.location.reload();
-    };
 
     window.previewPhoto = function(e) {
        const file = e.target.files[0];
@@ -703,7 +1175,9 @@
         }
       } catch (error) {
         console.error("Auth Error", error);
-        window.executeAuthFallback(error.message);
+        alert("Authentication Failed: " + error.message + "\n\nTip: Social Login only works on a Web Server (http/https). It will not work if you open the HTML file directly (file:///).");
+        loadingBtn.textContent = 'Continue';
+        loadingBtn.disabled = false;
       }
     };
 

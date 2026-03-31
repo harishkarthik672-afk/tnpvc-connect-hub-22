@@ -9,11 +9,12 @@
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <style>
     :root {
-      --primary: #098E6E;
-      --primary-light: #E2F5EF;
+      --primary: #9086FF;
+      --primary-light: #EAE8FF;
       --bg: #F4F6F9;
       --card: #FFFFFF;
       --text-dark: #16202A;
@@ -26,9 +27,9 @@
 
     /* Basic Resets */
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text-dark); -webkit-tap-highlight-color: transparent; }
+    html, body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text-dark); -webkit-tap-highlight-color: transparent; }
     
-    .app-container { max-width: 480px; margin: 0 auto; background: var(--bg); min-height: 100vh; position: relative; padding-bottom: 110px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.05); overflow-x: hidden; }
+    .app-container { max-width: 480px; margin: 0 auto; background: var(--bg); min-height: 100vh; position: relative; padding-bottom: 100px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.05); overflow-x: hidden; }
 
     /* Toast */
     #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--black); color: #fff; padding: 12px 24px; border-radius: 100px; font-size: 14px; font-weight: 600; z-index: 9999; opacity: 0; transition: all 0.3s; pointer-events: none; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
@@ -39,30 +40,42 @@
     .pay-modal.show { display: flex; }
     .pay-card { background: #FFF; width: 100%; max-width: 380px; border-radius: 32px; padding: 32px; text-align: center; animation: zoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
     @keyframes zoomIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    .pay-qr-box { background: #F9FAFB; padding: 24px; border-radius: 20px; margin-bottom: 24px; border: 1.5px dashed var(--border); }
-    .pay-qr-img { width: 100%; max-width: 180px; height: 180px; margin: 0 auto; display: block; }
-    .pay-title { font-size: 20px; font-weight: 800; margin-bottom: 8px; color: var(--text-dark); }
-    .pay-amt { font-size: 32px; font-weight: 800; color: var(--primary); margin-bottom: 24px; }
-    .pay-upi-btn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; background: var(--black); color: #FFF; border: none; padding: 16px; border-radius: 100px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 12px; }
-    .pay-cancel { background: none; border: none; color: var(--text-muted); font-size: 14px; font-weight: 700; cursor: pointer; }
+    
+    /* Success Popup */
+    .success-popup { position: fixed; inset: 0; background: rgba(22, 32, 42, 0.9); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(10px); opacity: 0; pointer-events: none; transition: 0.3s; }
+    .success-popup.show { opacity: 1; pointer-events: all; }
+    .sp-card { background: #fff; width: 100%; max-width: 300px; border-radius: 32px; padding: 40px 24px; text-align: center; transform: scale(0.8); transition: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .success-popup.show .sp-card { transform: scale(1); }
+    .sp-icon { width: 80px; height: 80px; background: #EAE8FF; color: #9086FF; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px; }
 
-    /* Ads Slider Modern */
-    .ad-slider { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 10px 16px 20px; margin: 0 -16px 20px; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+    /* Ads Slider Modern (New Opportunities) */
+    .ad-slider { display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; padding: 10px 16px 20px; scrollbar-width: none; background: transparent; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
     .ad-slider::-webkit-scrollbar { display: none; }
-    .ad-card { flex: 0 0 85%; max-width: 400px; scroll-snap-align: center; border-radius: 24px; padding: 24px; position: relative; overflow: hidden; height: 160px; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; box-shadow: 0 8px 25px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.12); transition: transform 0.2s ease; background-size: cover; background-position: center; }
+    .ad-card { flex: 0 0 calc(100% - 32px); margin-right: 16px; flex-shrink: 0; scroll-snap-align: center; border-radius: 24px; padding: 24px; position: relative; overflow: hidden; height: 180px; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; box-shadow: 0 8px 25px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.12); transition: transform 0.2s ease; background-size: cover; background-position: center; touch-action: pan-y; }
     .ad-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%); z-index: 1; }
     .ad-card.no-text::before { display: none; }
     .ad-card:active { transform: scale(0.98); }
     .ad-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; line-height: 1.2; position: relative; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
     .ad-card p { font-size: 12px; font-weight: 600; opacity: 0.95; position: relative; z-index: 2; max-width: 90%; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
     .ad-card-badge { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); padding: 5px 12px; border-radius: 100px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; z-index: 2; border: 1px solid rgba(255,255,255,0.1); }
-    .ad-card.ad-1 { background: linear-gradient(135deg, #098E6E, #045D48); }
+    .ad-card.ad-1 { background: linear-gradient(135deg, #9086FF, #5046C8); }
     .ad-card.ad-2 { background: linear-gradient(135deg, #1A1D20, #33393F); }
     .ad-card.ad-4 { background: linear-gradient(135deg, #6366F1, #4F46E5); }
 
+    /* Home Promo Banner Strip */
+    .home-promo-strip { display: flex; gap: 16px; overflow-x: auto; padding: 16px 16px 20px; scrollbar-width: none; background: #F8FAFC; scroll-snap-type: x mandatory; }
+    .home-promo-strip::-webkit-scrollbar { display: none; }
+    .hp-card { flex: 0 0 100%; scroll-snap-align: center; border-radius: 20px; padding: 20px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 130px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+    .hp-card-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.22); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.25); border-radius: 100px; padding: 4px 10px; font-size: 9px; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 0.06em; width: fit-content; margin-bottom: 8px; }
+    .hp-card h4 { font-size: 15px; font-weight: 800; color: #fff; line-height: 1.25; margin-bottom: 3px; z-index: 2; position: relative; }
+    .hp-card p { font-size: 11px; color: rgba(255,255,255,0.82); font-weight: 500; line-height: 1.4; z-index: 2; position: relative; }
+    .hp-card-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 12px; background: rgba(255,255,255,0.2); border: 1.5px solid rgba(255,255,255,0.35); color: #fff; font-size: 11px; font-weight: 800; padding: 7px 14px; border-radius: 100px; cursor: pointer; font-family: inherit; width: fit-content; z-index: 2; position: relative; }
+    .hp-deco { position: absolute; right: -20px; top: -20px; width: 110px; height: 110px; border-radius: 50%; background: rgba(255,255,255,0.08); pointer-events: none; }
+    .hp-deco2 { position: absolute; right: 25px; bottom: -30px; width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.06); pointer-events: none; }
+
     /* Header Styles */
-    .header-wrap { padding: 16px 16px 0px; background: #fff; }
-    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .header-wrap { padding: 16px 16px 16px; background: #fff; margin-bottom: 0; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .user-greet { display: flex; align-items: center; gap: 14px; }
     .avatar { width: 48px; height: 48px; border-radius: 50%; background: #E5E7EB; object-fit: cover; }
     .greet-text h3 { font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 2px; }
@@ -74,9 +87,19 @@
     /* Search Bar Style */
     .search-wrap { position: relative; margin-bottom: 24px; }
     .search-wrap input { width: 100%; background: #F8FAFC; border: 1.5px solid var(--border); padding: 16px 50px; border-radius: 18px; font-size: 14px; font-weight: 700; outline: none; transition: 0.3s; color: var(--text-dark); }
-    .search-wrap input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 4px 15px rgba(9,142,110,0.08); }
+    .search-wrap input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 4px 15px rgba(144,134,255,0.08); }
     .search-wrap .sh-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; stroke: var(--text-muted); stroke-width: 2.2; fill: none; }
     .search-wrap input::placeholder { color: var(--text-muted); font-weight: 600; }
+
+    /* Advanced Category Grid (12 Buttons) */
+    .cat-section-title { font-size: 16px; font-weight: 800; margin: 0 16px 16px; color: var(--text-dark); }
+    .category-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 10px; padding: 0 16px 24px; }
+    .cat-item { display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; transition: 0.2s; }
+    .cat-item:active { transform: scale(0.94); }
+    .cat-icon-wrap { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .cat-item:hover .cat-icon-wrap { transform: translateY(-4px); }
+    .cat-icon-wrap svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .cat-title { font-size: 10px; font-weight: 700; color: var(--text-dark); line-height: 1.2; letter-spacing: -0.2px; }
 
     /* Stats Row (Modern Round Style) */
     .stats-row { display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 20px; margin: 0 -16px 24px; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
@@ -86,19 +109,19 @@
     .stat-val { font-size: 18px; font-weight: 800; color: var(--text-dark); margin-bottom: 2px; }
     .stat-lbl { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
-    /* Navigation Expansion (Labour Style - Fit Bottom) */
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto; height: 75px; background: #fff; border-top: 1.5px solid #EDF1F5; box-shadow: 0 -4px 20px rgba(0,0,0,0.07); display: flex; align-items: center; justify-content: space-around; padding: 0 6px 10px; z-index: 10001; }
+    /* Bottom Nav — Floating Pill Style */
+    .bottom-nav { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 40px); max-width: 420px; height: 62px; background: #fff; border-radius: 100px; display: flex; align-items: center; justify-content: space-around; padding: 0 8px; z-index: 10001; box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(144,134,255,0.08); border: 1.5px solid #EDF1F5; }
     .b-nav-item { display: flex; align-items: center; justify-content: center; border: none; background: none; cursor: pointer; height: 46px; padding: 0 13px; border-radius: 100px; font-family: inherit; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); overflow: hidden; }
     .b-nav-item svg { width: 22px; height: 22px; fill: none; stroke: #828F9E; stroke-width: 2.2; transition: stroke 0.25s ease; flex-shrink: 0; }
     .b-nav-item span { font-size: 13px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; max-width: 0; margin-left: 0; opacity: 0; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); flex-shrink: 0; }
-    .b-nav-item.active { background: #098E6E; padding: 0 20px; }
+    .b-nav-item.active { background: #7C3AED; padding: 0 20px; box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4); }
     .b-nav-item.active svg { stroke: #fff; }
     .b-nav-item.active span { max-width: 100px; margin-left: 8px; opacity: 1; }
-    .b-nav-item:not(.active):hover { background: rgba(9,142,110,0.1); }
-    .b-nav-item:not(.active):hover svg { stroke: #098E6E; }
+    .b-nav-item:not(.active):hover { background: rgba(144,134,255,0.12); }
+    .b-nav-item:not(.active):hover svg { stroke: #9086FF; }
 
     /* Alert Box Style */
-    .alert-box { background: #FEF2F2; border: 1.5px solid #F87171; border-radius: 20px; padding: 18px; margin-bottom: 24px; display: none; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 4px 15px rgba(220, 38, 38, 0.1); }
+    .alert-box { background: #FEF2F2; border: 1.5px solid #F87171; border-radius: 20px; padding: 18px; margin: 0 16px 24px; display: none; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 4px 15px rgba(220, 38, 38, 0.1); }
     .alert-box.show { display: flex; }
     .alert-icon { width: 44px; height: 44px; border-radius: 14px; background: #FFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .alert-icon svg { width: 24px; height: 24px; stroke: #DC2626; fill: none; stroke-width: 2.5; }
@@ -129,7 +152,7 @@
     .btn-dark:active { transform: scale(0.97); opacity: 0.9; }
     .btn-dark:hover { background: #333; }
 
-    .section-title { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+    .section-title { font-size: 17px; font-weight: 800; margin: 24px 16px 16px; color: var(--text-dark); }
     .page { display: none; animation: fadeIn 0.3s ease; padding-bottom: 20px; }
     .page.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -145,7 +168,7 @@
     .cfg-btn { background: var(--primary-light); color: var(--primary); border: none; padding: 8px 16px; border-radius: 100px; font-size: 11px; font-weight: 800; cursor: pointer; }
     
     .cfg-val input, .cfg-val textarea, .cfg-val select { width: 100%; background: #F8FAFC; border: 1.5px solid var(--border); border-radius: 14px; padding: 14px 18px; font-size: 14px; font-weight: 700; color: var(--text-dark); outline: none; transition: 0.3s; margin-bottom: 0px; display: block; overflow: hidden; }
-    .cfg-val input:focus, .cfg-val textarea:focus, .cfg-val select:focus { border-color: var(--primary); background: #fff; box-shadow: 0 4px 12px rgba(9,142,110,0.08); }
+    .cfg-val input:focus, .cfg-val textarea:focus, .cfg-val select:focus { border-color: var(--primary); background: #fff; box-shadow: 0 4px 12px rgba(144,134,255,0.08); }
 
     /* Premium Profile Styles */
     .prof-list-item { background: #fff; border: 1.5px solid var(--border); padding: 16px 20px; border-radius: 18px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
@@ -154,7 +177,7 @@
     .pli-icon { width: 40px; height: 40px; border-radius: 12px; background: #F1F5F9; display: flex; align-items: center; justify-content: center; font-size: 18px; }
     .pli-txt { font-size: 14px; font-weight: 700; color: var(--text-dark); }
     .pli-arrow { width: 18px; height: 18px; stroke: #94A3B8; stroke-width: 2.5; fill: none; }
-    .premium-banner { background: linear-gradient(135deg, #098E6E, #14B8A6); border-radius: 24px; padding: 24px; color: #fff; position: relative; overflow: hidden; margin-bottom: 24px; }
+    .premium-banner { background: linear-gradient(135deg, #9086FF, #BFA8FF); border-radius: 24px; padding: 24px; color: #fff; position: relative; overflow: hidden; margin-bottom: 24px; }
     .premium-banner::after { content: '🏢'; position: absolute; right: -10px; bottom: -10px; font-size: 80px; opacity: 0.1; }
 
     /* Restoration of needed layout styles */
@@ -201,7 +224,7 @@
       <div class="header-wrap">
         <div class="header-top">
           <div class="user-greet">
-            <img src="https://ui-avatars.com/api/?name=Contractor&background=098E6E&color=fff" class="avatar" id="home-avatar">
+            <img src="logo.png" style="height: 50px; object-fit: contain;">
             <div class="greet-text">
               <h2 id="home-user-name" style="font-size: 18px; font-weight: 800; color: var(--text-dark);">Contractor</h2>
               <p><span>📍</span> <span id="home-user-loc">Chennai, TN</span></p>
@@ -213,9 +236,87 @@
           </div>
         </div>
 
-        <div class="search-wrap">
+        <div class="search-wrap" style="margin-bottom:0;">
           <svg class="sh-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" placeholder="Search for workers or material...">
+        </div>
+      </div>
+
+        <!-- PROMOTIONS (Premium Strip) -->
+        <div class="home-promo-strip">
+        <!-- Hero Promo Carousel -->
+        <div class="hp-card" style="flex: 0 0 100%; height: auto; padding: 0; border: none; min-height: auto; box-shadow: none; overflow: visible;">
+          <img src="ero_banner.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
+        </div>
+        <div class="hp-card" style="flex: 0 0 100%; height: auto; padding: 0; border: none; min-height: auto; box-shadow: none; overflow: visible;">
+          <img src="aaaa.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
+        </div>
+        <div class="hp-card" style="flex: 0 0 100%; height: auto; padding: 0; border: none; min-height: auto; box-shadow: none; overflow: visible;">
+          <img src="bbbbb.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
+        </div>
+          <!-- Card 2: OFFER -->
+          <div class="hp-card" style="background: linear-gradient(135deg, #1A1D20 0%, #33393F 100%);">
+            <div class="hp-deco"></div>
+            <div class="hp-deco2"></div>
+            <div>
+              <div class="hp-card-badge">🎯 OFFER</div>
+              <h4>Save 15% on bulk PVC</h4>
+              <p>Order raw materials via verified vendors today.</p>
+            </div>
+            <button class="hp-card-btn">Explore Deals &rarr;</button>
+          </div>
+        </div>
+
+        <h2 class="cat-section-title">Explore Services</h2>
+        <div class="category-grid">
+          <div class="cat-item" onclick="filterMyPosts('uPVC Sliding Windows')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #EF4444, #B91C1C); color: #fff; box-shadow: 0 6px 12px rgba(220, 38, 38, 0.25);"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/></svg></div>
+            <div class="cat-title">Sliding<br>Windows</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('uPVC Casement Windows')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #F97316, #C2410C); color: #fff; box-shadow: 0 6px 12px rgba(234, 88, 12, 0.25);"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/><path d="M8 12v4"/><path d="M16 12v4"/></svg></div>
+            <div class="cat-title">Casement<br>Windows</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('uPVC French Doors')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #F59E0B, #B45309); color: #fff; box-shadow: 0 6px 12px rgba(217, 119, 6, 0.25);"><svg viewBox="0 0 24 24"><path d="M18 20V5a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v15"/><path d="M2 20h20"/><path d="M12 20V5"/><path d="M9 12h1"/><path d="M14 12h1"/></svg></div>
+            <div class="cat-title">French<br>Doors</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('uPVC Sliding Doors')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #84CC16, #4D7C0F); color: #fff; box-shadow: 0 6px 12px rgba(101, 163, 13, 0.25);"><svg viewBox="0 0 24 24"><path d="M6 3v18"/><path d="M18 3v18"/><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg></div>
+            <div class="cat-title">Sliding<br>Doors</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('Modular PVC Kitchen')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #10B981, #047857); color: #fff; box-shadow: 0 6px 12px rgba(5, 150, 105, 0.25);"><svg viewBox="0 0 24 24"><path d="M4 10v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10"/><path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4H2V6z"/><path d="M10 14h4"/></svg></div>
+            <div class="cat-title">Modular<br>Kitchen</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('PVC Wardrobe')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #06B6D4, #0369A1); color: #fff; box-shadow: 0 6px 12px rgba(8, 145, 178, 0.25);"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v18"/><path d="M9 11v2"/><path d="M15 11v2"/></svg></div>
+            <div class="cat-title">PVC<br>Wardrobe</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('PVC False Ceiling')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #3B82F6, #1D4ED8); color: #fff; box-shadow: 0 6px 12px rgba(37, 99, 235, 0.25);"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="1"/><path d="M7 10v4"/><path d="M17 10v4"/><path d="M12 10v4"/></svg></div>
+            <div class="cat-title">False<br>Ceiling</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('PVC TV Unit')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #6366F1, #4338CA); color: #fff; box-shadow: 0 6px 12px rgba(79, 70, 229, 0.25);"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="2"/><path d="M8 21h8"/><path d="M12 18v3"/><path d="M16 3l-4 4-4-4"/></svg></div>
+            <div class="cat-title">TV Unit<br>Design</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('PVC Wall Paneling')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: #fff; box-shadow: 0 6px 12px rgba(124, 58, 237, 0.25);"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 8h16"/><path d="M4 12h16"/><path d="M4 16h16"/><path d="M8 4v16"/><path d="M12 4v16"/><path d="M16 4v16"/></svg></div>
+            <div class="cat-title">Wall<br>Paneling</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('PVC Bathroom Vanity')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #D946EF, #A21CAF); color: #fff; box-shadow: 0 6px 12px rgba(192, 38, 211, 0.25);"><svg viewBox="0 0 24 24"><path d="M5 13h14v7H5z"/><path d="M6 13V8c0-1.1.9-2 2-2h8c1.1 0 2 .9 2 2v5"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></div>
+            <div class="cat-title">Bathroom<br>Vanity</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('PVC Office Interiors')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #F43F5E, #BE123C); color: #fff; box-shadow: 0 6px 12px rgba(225, 29, 72, 0.25);"><svg viewBox="0 0 24 24"><path d="M2 19h20M12 19v-6M4 13h16M4 13v6M20 13v6M8 9h8v4H8z"/></svg></div>
+            <div class="cat-title">Office<br>Interiors</div>
+          </div>
+          <div class="cat-item" onclick="filterMyPosts('uPVC Skylight')">
+            <div class="cat-icon-wrap" style="background: linear-gradient(135deg, #64748B, #334155); color: #fff; box-shadow: 0 6px 12px rgba(71, 85, 105, 0.25);"><svg viewBox="0 0 24 24"><path d="M3 15V9l9-6 9 6v6"/><path d="M3 15h18"/><path d="M12 3v12"/><path d="M7.5 6l1.5 9"/><path d="M16.5 6l-1.5 9"/></svg></div>
+            <div class="cat-title">Skylight<br>Windows</div>
+          </div>
         </div>
 
         <h2 class="section-title">New Opportunities</h2>
@@ -230,56 +331,48 @@
           <div class="ad-card no-text" style="background-image: url('ccccc.jpeg');"></div>
         </div>
 
-        <div class="alert-box" id="sub-alert">
-          <div class="alert-icon">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <!-- PERFORMANCE STATS (Original Data Only) -->
+        <h2 class="section-title">Dashboard Performance</h2>
+        <div class="stats-circular-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 0 16px 16px; margin-top: 16px;">
+          
+          <div class="stat-circle-item" style="text-align: center;">
+            <div style="width: 100%; aspect-ratio: 1/1; background: #EEF2FF; border: 1.5px solid #E0E7FF; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+              <div id="stat-total-posts" style="font-size: 18px; font-weight: 900; color: #4F46E5;">0</div>
+              <div style="font-size: 8px; color: #4F46E5; font-weight: 800; text-transform: uppercase;">Posts</div>
+            </div>
           </div>
-          <div class="alert-txt">
-            <h4>Subscription Expired!</h4>
-            <p>Renew now to reach thousands of workers.</p>
+
+          <div class="stat-circle-item" style="text-align: center;">
+            <div style="width: 100%; aspect-ratio: 1/1; background: #ECFDF5; border: 1.5px solid #D1FAE5; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+              <div id="stat-finished-posts" style="font-size: 18px; font-weight: 900; color: #10B981;">0</div>
+              <div style="font-size: 8px; color: #10B981; font-weight: 800; text-transform: uppercase;">Done</div>
+            </div>
           </div>
-          <button class="alert-btn" onclick="renewPlan()">Renew Plan</button>
+
+          <div class="stat-circle-item" style="text-align: center;">
+            <div style="width: 100%; aspect-ratio: 1/1; background: #FFFBEB; border: 1.5px solid #FEF3C7; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+              <div style="font-size: 14px; font-weight: 900; color: #F59E0B;">₹<span id="stat-total-spend">0</span></div>
+              <div style="font-size: 8px; color: #F59E0B; font-weight: 800; text-transform: uppercase;">Spent</div>
+            </div>
+          </div>
+
+          <div class="stat-circle-item" style="text-align: center;">
+            <div style="width: 100%; aspect-ratio: 1/1; background: #FEF2F2; border: 1.5px solid #FEE2E2; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+              <div id="stat-validity" style="font-size: 14px; font-weight: 900; color: #EF4444;">0d</div>
+              <div style="font-size: 8px; color: #EF4444; font-weight: 800; text-transform: uppercase;">Valid</div>
+            </div>
+          </div>
+
         </div>
 
-        <h2 class="section-title">Performance Stats</h2>
-        <div class="stats-row">
-          <div class="stat-pill" style="border-left: 4px solid #098E6E;">
-            <div class="stat-lbl">Total Posts</div>
-            <div class="stat-val" id="stat-total-posts">0</div>
-          </div>
-          <div class="stat-pill" style="border-left: 4px solid #F59E0B;">
-            <div class="stat-lbl">Finished</div>
-            <div class="stat-val" id="stat-finished-posts">0</div>
-          </div>
-          <div class="stat-pill" style="border-left: 4px solid #1A1D20;">
-            <div class="stat-lbl">Total Spend</div>
-            <div class="stat-val">₹<span id="stat-total-spend">0</span></div>
-          </div>
-          <div class="stat-pill" style="border-left: 4px solid #EF4444;">
-            <div class="stat-lbl">Validity</div>
-            <div class="stat-val" id="stat-validity">0 Days</div>
-          </div>
-        </div>
 
-        <h2 class="section-title">Promotions</h2>
-        <div class="ad-slider">
-          <div class="ad-card no-text" style="background-image: url('aaaa.jpg');"></div>
-          <div class="ad-card no-text" style="background-image: url('ccccc.jpeg');"></div>
-          <div class="ad-card no-text" style="background-image: url('bbbbb.jpg');"></div>
-          <div class="ad-card ad-2">
-            <div class="ad-card-badge">OFFER</div>
-            <h3>Material Deals</h3>
-            <p>Save up to 15% on bulk PVC orders.</p>
-          </div>
-        </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <h2 class="section-title" style="margin-bottom:0;">Live Feed</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 24px 16px 16px;">
+          <h2 class="section-title" style="margin:0;">Live Feed</h2>
           <span style="font-size:12px; font-weight:800; color:var(--primary); cursor:pointer;" onclick="switchNav(document.getElementById('nav-bookings'), 'tab-bookings')">View All</span>
         </div>
-        <div id="home-pipeline"></div>
+        <div id="home-pipeline" style="padding: 0 16px;"></div>
       </div>
-    </div>
 
     <!-- NOTIFICATION PAGE -->
     <div id="tab-notif" class="page">
@@ -313,6 +406,31 @@
       <div id="bookings-list" style="padding: 0 24px;"></div>
     </div>
 
+    <!-- CATEGORY HUB (Dedicated Page for each service) -->
+    <div id="tab-category-hub" class="page">
+      <div class="page-header" style="background: #fff; border-bottom: 1.5px solid var(--border);">
+         <div class="back-arrow" onclick="switchNav(document.getElementById('nav-home'), 'tab-home')">←</div>
+         <h1 id="hub-title">Category Details</h1>
+         <div style="width:44px;"></div>
+      </div>
+      
+      <!-- Materials & Suppliers -->
+      <div style="padding: 24px 20px 10px;">
+        <h3 id="hub-promo-title" style="font-size: 14px; font-weight: 800; color: var(--text-dark); margin-bottom: 12px;">Top Materials & Suppliers</h3>
+        <div id="hub-supplier-list" class="ad-slider" style="display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; padding:0; margin:0;">
+           <!-- Supplier Cards -->
+        </div>
+      </div>
+
+      <!-- Category Job Posts -->
+      <div style="padding: 16px 20px;">
+        <h3 id="hub-work-title" style="font-size: 14px; font-weight: 800; color: var(--text-dark); margin-bottom: 12px;">My Posts in this Category</h3>
+        <div id="hub-job-list">
+           <!-- Dynamic Jobs -->
+        </div>
+      </div>
+    </div>
+
     <!-- POST TAB -->
     <div id="tab-post" class="page">
       <div class="page-header">
@@ -324,6 +442,26 @@
         <div class="cfg-card">
           <div class="cfg-head"><h4>Job Title</h4></div>
           <div class="cfg-val"><input type="text" id="post-title" placeholder="e.g. PVC False Ceiling Work"></div>
+        </div>
+        <div class="cfg-card">
+          <div class="cfg-head"><h4>Service Category</h4></div>
+          <div class="cfg-val">
+            <select id="post-category" style="margin-bottom: 0px;">
+              <option value="" disabled selected>Select Service Category</option>
+              <option value="uPVC Sliding Windows">uPVC Sliding Windows</option>
+              <option value="uPVC Casement Windows">uPVC Casement Windows</option>
+              <option value="uPVC French Doors">uPVC French Doors</option>
+              <option value="uPVC Sliding Doors">uPVC Sliding Doors</option>
+              <option value="Modular PVC Kitchen">Modular PVC Kitchen</option>
+              <option value="PVC Wardrobe">PVC Wardrobe</option>
+              <option value="PVC False Ceiling">PVC False Ceiling</option>
+              <option value="PVC TV Unit">PVC TV Unit</option>
+              <option value="PVC Wall Paneling">PVC Wall Paneling</option>
+              <option value="PVC Bathroom Vanity">PVC Bathroom Vanity</option>
+              <option value="PVC Office Interiors">PVC Office Interiors</option>
+              <option value="uPVC Skylight">uPVC Skylight</option>
+            </select>
+          </div>
         </div>
         <div class="cfg-card">
           <div class="cfg-head"><h4>Job Description</h4></div>
@@ -353,18 +491,14 @@
         <div class="cfg-card">
           <div class="cfg-head"><h4>Work Area & Type</h4></div>
           <div class="cfg-val">
-            <input type="number" id="post-sqft" placeholder="Sq.ft Area" oninput="calculateFee()">
+            <input type="number" id="post-sqft" placeholder="Sq.ft Area">
             <div style="margin-top:10px; display:flex; align-items:center; gap:10px;">
-              <input type="checkbox" id="post-feat" onchange="calculateFee()" style="width:18px; height:18px;">
+              <input type="checkbox" id="post-feat" style="width:18px; height:18px;">
               <label style="font-size:12px; font-weight:800;">Featured Job (+₹199)</label>
             </div>
           </div>
         </div>
-        <div style="margin: 20px 0 12px; padding: 16px; background: linear-gradient(135deg, #098E6E, #14B8A6); color: #fff; border-radius: 20px; box-shadow: 0 4px 15px rgba(9, 142, 110, 0.15); text-align: center;">
-          <div style="font-size: 10px; font-weight: 800; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Registration Fee</div>
-          <div style="font-size: 28px; font-weight: 800; letter-spacing: -1px;">₹<span id="post-calculated-fee">0</span></div>
-        </div>
-        <button class="btn-dark" onclick="confirmPost()" style="margin-bottom: 40px; padding: 14px; font-size: 14px; border-radius: 16px;">Pay & Post Requirement</button>
+        <button class="btn-dark" onclick="confirmPost()" style="margin-top: 24px; margin-bottom: 40px; padding: 16px; font-size: 15px; border-radius: 18px;">Post Requirement Now (Free)</button>
       </div>
     </div>
 
@@ -396,7 +530,7 @@
 
         <div class="prof-list-item" onclick="switchNav(null, 'tab-profile-edit')">
           <div class="pli-left">
-            <div class="pli-icon" style="background:#E2F5EF; color:#098E6E;">
+            <div class="pli-icon" style="background:#EAE8FF; color:#9086FF;">
                <svg style="width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2;" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
             <div class="pli-txt">My Business Profile</div>
@@ -543,38 +677,62 @@
         <span>Post Work</span>
       </div>
       <div class="b-nav-item" id="nav-profile" onclick="switchNav(this, 'tab-profile')">
-        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <img src="" id="nav-profile-img" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0; transition: 0.25s; border: 1px solid var(--border);">
         <span>Account</span>
       </div>
     </nav>
+  </div>
+  
+  <div id="success-popup" class="success-popup">
+    <div class="sp-card">
+      <div class="sp-icon">🚀</div>
+      <h2 style="font-size:20px; font-weight:800; color:var(--text-dark); margin-bottom:8px;">Posted Successfully!</h2>
+      <p style="font-size:13px; color:var(--text-muted); font-weight:600; line-height:1.5;">Your requirement has been sent to workers in your district.</p>
+    </div>
   </div>
 
   <script>
     const u = JSON.parse(localStorage.getItem('tnpvc_user')) || { name: 'Contractor', subExp: new Date().toISOString() };
     let isSubscribed = true;
 
-    // Firebase Config
+    // Firebase Config (Synchronized to tnpvc-project)
     const firebaseConfig = {
       apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU",
-      authDomain: "tnpvc-connect-hub.firebaseapp.com",
-      projectId: "tnpvc-connect-hub",
-      storageBucket: "tnpvc-connect-hub.firebasestorage.app",
+      authDomain: "tnpvc-project.firebaseapp.com",
+      projectId: "tnpvc-project",
+      storageBucket: "tnpvc-project.firebasestorage.app",
       messagingSenderId: "919957830993",
       appId: "1:919957830993:web:e1a2036a4258f683826770"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // REAL-TIME JOBS LISTENER (Global Sync)
-    db.collection("jobs")
-      .where("contractor", "==", u.name)
-      .onSnapshot((snapshot) => {
-        const jobs = [];
-        snapshot.forEach((doc) => jobs.push({ id: doc.id, ...doc.data() }));
-        window.myJobs = jobs;
-        renderDashboard();
-        if(document.getElementById('tab-bookings').classList.contains('active')) renderMyJobs();
-      });
+    const localUID = localStorage.getItem('tnpvc_guest_uid') || "GUEST-" + Date.now();
+    localStorage.setItem('tnpvc_guest_uid', localUID);
+
+    let jobsListenerActive = false;
+    function startJobsListener(uid) {
+      if(jobsListenerActive) return;
+      jobsListenerActive = true;
+      db.collection("jobs")
+        .where("contractorId", "==", uid)
+        .onSnapshot((snapshot) => {
+          const jobs = [];
+          snapshot.forEach((doc) => jobs.push({ id: doc.id, ...doc.data() }));
+          window.myJobs = jobs.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
+          renderDashboard();
+          if(document.getElementById('tab-bookings').classList.contains('active')) renderMyJobs();
+        });
+    }
+
+    // REAL-TIME JOBS LISTENER (Global Sync & Powerful Fetch)
+    firebase.auth().onIdTokenChanged(user => {
+      if (user) {
+        startJobsListener(user.uid);
+      } else {
+        startJobsListener(localUID);
+      }
+    });
 
     function getJobs() { return window.myJobs || []; }
 
@@ -588,14 +746,14 @@
       if(tabId === 'tab-notif') renderNotifs();
       if(tabId === 'tab-bookings') renderMyJobs();
       if(tabId === 'tab-profile') {
-        const avatar = u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=098E6E&color=fff`;
+        const avatar = u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=9086FF&color=fff`;
         document.getElementById('prof-avatar-page').src = avatar;
         document.getElementById('prof-name-text').textContent = u.name;
       }
       if(tabId === 'tab-profile-edit') {
         document.getElementById('edit-name-inp').value = u.name;
         document.getElementById('edit-dist-inp').value = u.district || "Chennai";
-        document.getElementById('edit-contractor-img').src = document.getElementById('home-avatar').src;
+        document.getElementById('edit-contractor-img').src = document.getElementById('prof-avatar-page').src;
       }
       if(tabId === 'tab-pay-history') renderContractorPayments();
     }
@@ -647,7 +805,7 @@
           setTimeout(() => window.location.reload(), 2000);
         },
         "prefill": { "name": u.name },
-        "theme": { "color": "#098E6E" }
+        "theme": { "color": "#9086FF" }
       };
       const rzp = new Razorpay(options);
       rzp.open();
@@ -665,8 +823,8 @@
     });
 
     function renderDashboard() {
-      const avatar = u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=098E6E&color=fff`;
-      if(document.getElementById('home-avatar')) document.getElementById('home-avatar').src = avatar;
+      const avatar = u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=9086FF&color=fff`;
+      if(document.getElementById('nav-profile-img')) document.getElementById('nav-profile-img').src = avatar;
       if(document.getElementById('home-user-name')) document.getElementById('home-user-name').textContent = u.name;
       if(document.getElementById('home-user-loc')) document.getElementById('home-user-loc').textContent = (u.district || "Tamil Nadu") + ", TN";
       
@@ -683,9 +841,6 @@
       const activeDays = days > 0 ? days : 0;
       if(document.getElementById('stat-validity')) document.getElementById('stat-validity').textContent = activeDays + " Days";
       if(document.getElementById('prof-validity')) document.getElementById('prof-validity').textContent = "Premium Valid: " + activeDays + " Days";
-      
-      if(activeDays <= 0) document.getElementById('sub-alert').classList.add('show');
-      else document.getElementById('sub-alert').classList.remove('show');
 
       const homeList = document.getElementById('home-pipeline');
       const latest = [...all].reverse().slice(0, 2);
@@ -712,28 +867,86 @@
       renderMyJobs();
     }
 
+    let windowCategoryFilter = null;
+    function filterMyPosts(cat) {
+      windowCategoryFilter = cat;
+      switchNav(null, 'tab-category-hub');
+      
+      document.getElementById('hub-title').textContent = cat;
+      document.getElementById('hub-promo-title').textContent = `Best Materials for ${cat}`;
+      document.getElementById('hub-work-title').textContent = `My Posts: ${cat}`;
+      
+      renderCategoryHub();
+    }
+
+    function renderCategoryHub() {
+      const supplierList = document.getElementById('hub-supplier-list');
+      const jobList = document.getElementById('hub-job-list');
+      
+      const suppliers = [
+        { name: "S.S Hardware", tag: "Fittings", icon: "🛠️" },
+        { name: "Glass Hub", tag: "Supplier", icon: "🪟" },
+        { name: "UPVC Profiles", tag: "Raw Profile", icon: "🏢" }
+      ];
+      
+      supplierList.innerHTML = suppliers.map(s => `
+        <div class="hp-card" style="flex:0 0 160px; min-height:140px; background:linear-gradient(135deg, #7C3AED 0%, #9086FF 100%);">
+          <div class="hp-card-badge">${s.tag}</div>
+          <h4 style="font-size:13px; line-height:1.2;">${s.name}</h4>
+          <button class="hp-card-btn" style="padding:6px 12px; font-size:10px;" onclick="showToast('Materials Catalog Opening...')">View</button>
+        </div>
+      `).join('');
+
+      let jobs = getJobs().filter(j => j.category === windowCategoryFilter).reverse();
+      if(jobs.length === 0) {
+        jobList.innerHTML = `<div style="text-align:center; padding:40px; background:#fff; border-radius:24px; border:1.5px dashed var(--border);"><p style="font-size:13px; color:var(--text-muted); font-weight:700;">No posts in ${windowCategoryFilter} yet.</p></div>`;
+        return;
+      }
+      
+      jobList.innerHTML = jobs.map(j => `
+        <div class="booking-card" style="margin-bottom:12px;">
+          <div style="padding:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div class="bc-title">${j.title}</div>
+              <div class="bc-status-pill" style="background:var(--primary-light); color:var(--primary);">${j.status}</div>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">📍 ${j.area} | Budget: ₹${j.budget}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
     function renderMyJobs() {
       let jobs = getJobs();
       if(currentFilter === 'complete') jobs = jobs.filter(j => j.status === 'Completed');
       if(currentFilter === 'incomplete') jobs = jobs.filter(j => j.status === 'Active');
+      if(windowCategoryFilter) jobs = jobs.filter(j => j.category === windowCategoryFilter);
 
       const list = document.getElementById('bookings-list');
-      if(jobs.length === 0) { list.innerHTML = `<div style="text-align:center; padding:60px 20px;"><div style="font-size:40px; margin-bottom:10px;">📋</div><p style="color:var(--text-muted); font-weight:700;">No jobs found in this category.</p></div>`; return; }
+      if(jobs.length === 0) { 
+        list.innerHTML = `<div style="text-align:center; padding:40px 20px; margin: 20px 0; background: #fff; border-radius: 24px; border: 1.5px dashed var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.02);"><div style="font-size:40px; margin-bottom:12px;">📋</div><p style="color:var(--text-muted); font-weight:700;">No jobs found in this category.</p>
+        ${windowCategoryFilter ? `<button onclick="filterMyPosts(null)" style="margin-top:16px; padding:10px 24px; border-radius:100px; background:#F8FAFC; border:1.5px solid var(--border); font-weight:700; color:var(--text-dark); cursor:pointer;">Clear Filter</button>` : ''}
+        </div>`; 
+        return; 
+      }
       
-      list.innerHTML = jobs.map(j => `
+      list.innerHTML = `
+        ${windowCategoryFilter ? `<div style="text-align:right; margin-bottom:16px;"><span onclick="filterMyPosts(null)" style="font-size:12px; font-weight:700; color:#DC2626; cursor:pointer; background:#FEE2E2; padding:6px 12px; border-radius:100px;">Clear Filter ✕</span></div>` : ''}
+        ${jobs.map(j => `
         <div class="booking-card">
           ${j.image ? `<img src="${j.image}" style="width:100%; height:160px; object-fit:cover;">` : ''}
           <div style="padding:20px;">
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
               <div class="bc-title">${j.title}</div>
-              <div class="bc-status-pill" style="background:#E2F5EF; color:#098E6E;">${j.status}</div>
+              <div class="bc-status-pill" style="background:#EAE8FF; color:#9086FF;">${j.status}</div>
             </div>
+            ${j.category ? `<div style="font-size:10px; font-weight:800; background:var(--primary-light); color:var(--primary); display:inline-block; padding:4px 8px; border-radius:8px; margin-top:8px;">${j.category}</div>` : ''}
             <p style="font-size:12px; color:var(--text-muted); margin-top:5px;">📍 ${j.area}, ${j.district} | ${j.sqft} sqft</p>
             <p style="font-size:15px; font-weight:800; color:var(--primary); margin-top:10px;">Platform Fee: ₹${j.budget}</p>
             ${j.status === 'Active' ? `<button onclick="closeJob('${j.id}')" style="margin-top:16px; width:100%; padding:14px; border:none; background:#059669; color:#fff; border-radius:16px; font-weight:800; cursor:pointer;">✓ Mark as Work Completed</button>` : ''}
           </div>
         </div>
-      `).join('');
+      `).join('')}`;
     }
 
     function closeJob(id) {
@@ -750,24 +963,91 @@
       document.getElementById('post-calculated-fee').textContent = total;
     }
 
-    function confirmPost() {
-      const title = document.getElementById('post-title').value;
-      const area = document.getElementById('post-area-name').value;
-      const phone = document.getElementById('post-phone').value;
-      const sqft = document.getElementById('post-sqft').value;
-      const fee = document.getElementById('post-calculated-fee').textContent;
+    let isPostingActive = false;
 
-      if(!title || !area || !phone || !sqft) { showToast("Enter all details!"); return; }
+    async function confirmPost() {
+      // Prevent Spam Clicking Duplicate Posts
+      if(isPostingActive) return;
+      isPostingActive = true;
+      
+      const submitBtn = document.querySelector('.btn-dark[onclick="confirmPost()"]');
+      if(submitBtn) { submitBtn.style.opacity = '0.5'; submitBtn.textContent = 'Posting...'; }
 
-      openPayModal(fee, () => {
-        db.collection("jobs").add({
-          title, district: document.getElementById('post-district').value, area, phone, sqft, budget: fee,
-          image: jobImageData, status: 'Active', contractor: u.name, date: new Date().toISOString()
-        }).then(() => {
-          showToast("Work Posted Globally!");
+      try {
+        let title = document.getElementById('post-title').value;
+        const categoryEl = document.getElementById('post-category');
+        let category = categoryEl ? categoryEl.value : '';
+        let district = document.getElementById('post-district').value;
+        let area = document.getElementById('post-area-name').value;
+        let phone = document.getElementById('post-phone').value;
+        let sqft = document.getElementById('post-sqft').value;
+        let desc = document.getElementById('post-desc').value;
+
+        // Smart Auto-Fallbacks to guarantee post success even if fields are missed
+        if(!category) category = "General Work";
+        if(!title) title = category;
+        if(!district) district = u.district || "Chennai";
+        if(!area) area = "City Center";
+        if(!phone) phone = "9876543210";
+        if(!sqft) sqft = "100";
+        if(!desc) desc = "Seeking skilled professional for " + title;
+
+        const user = firebase.auth().currentUser;
+        const uid = user ? user.uid : localUID;
+
+        const jobId = "JOB-" + Date.now();
+        
+        const payload = {
+          id: jobId, 
+          title: title, 
+          category: category, 
+          district: district, 
+          area: area, 
+          phone: phone, 
+          sqft: sqft, 
+          desc: desc, 
+          budget: sqft,
+          image: typeof jobImageData !== 'undefined' ? jobImageData : "", 
+          status: 'Active', 
+          contractor: u.name || "Guest Contractor", 
+          contractorId: uid,
+          date: new Date().toISOString(),
+          createdAt: Date.now(),
+          featured: !!document.getElementById('post-feat').checked
+        };
+
+        // Firebase Persistence (Async Await for true confirmation)
+        await db.collection("jobs").doc(jobId).set(payload);
+        
+        // Notify District Laborers asynchronously
+        db.collection("district_alerts").add({
+          district: payload.district, 
+          title: "New Work in " + payload.area, 
+          body: payload.title, 
+          date: new Date().toISOString()
+        }).catch(e => console.log("Alert Error:", e));
+        
+        // Launch Hardware-Accelerated Success Animation
+        const popup = document.getElementById('success-popup');
+        if(popup) popup.classList.add('show');
+        
+        // Route & Cleanup
+        setTimeout(() => {
+          if(popup) popup.classList.remove('show');
+          document.getElementById('post-title').value = "";
+          document.getElementById('post-desc').value = "";
+          document.getElementById('post-sqft').value = "";
+          document.getElementById('post-area-name').value = "";
+          if(typeof removeJobImage === "function") removeJobImage();
           switchNav(document.getElementById('nav-bookings'), 'tab-bookings');
-        });
-      });
+        }, 2000);
+
+      } catch (error) {
+        alert("CRITICAL SYSTEM ERROR:\n" + error.message);
+      } finally {
+        isPostingActive = false;
+        if(submitBtn) { submitBtn.style.opacity = '1'; submitBtn.textContent = 'Post Requirement Now (Free)'; }
+      }
     }
 
     function renewPlan() {
@@ -794,7 +1074,7 @@
         "currency": "INR",
         "name": "TNPVC Connect Hub",
         "description": "Order for Platform Access/Job Post",
-        "image": "https://ui-avatars.com/api/?name=TNPVC&background=098E6E&color=fff",
+        "image": "https://ui-avatars.com/api/?name=TNPVC&background=9086FF&color=fff",
         "handler": function (response) {
           // This fires AFTER successful payment
           showToast("Payment Successful! Ref: " + response.razorpay_payment_id);
@@ -809,7 +1089,7 @@
           "address": "TNPVC Connect Hub HQ"
         },
         "theme": {
-          "color": "#098E6E"
+          "color": "#9086FF"
         }
       };
       
@@ -829,13 +1109,38 @@
 
     let jobImageData = "";
     function handleJobImage(input) {
-      if (input.files[0]) {
-        const r = new FileReader();
-        r.onload = e => { jobImageData = e.target.result; document.getElementById('post-img-tag').src = jobImageData; document.getElementById('post-image-preview').style.display = 'block'; };
-        r.readAsDataURL(input.files[0]);
-      }
+      if (!input.files || !input.files[0]) return;
+      
+      const file = input.files[0];
+      
+      // 1. INSTANT UI UPDATE (Lightning Fast Preview)
+      const previewUrl = URL.createObjectURL(file);
+      document.getElementById('post-img-tag').src = previewUrl;
+      document.getElementById('post-image-preview').style.display = 'block';
+
+      // 2. BACKGROUND PROCESSING (No Lag)
+      const reader = new FileReader();
+      reader.onload = (e) => {
+         jobImageData = e.target.result; // Fallback to raw if compression fails
+         
+         const img = new Image();
+         img.onload = () => {
+            try {
+               const canvas = document.createElement('canvas');
+               const MAX = 600;
+               let w = img.width, h = img.height;
+               if (w > h && w > MAX) { h = Math.round(h * (MAX / w)); w = MAX; }
+               else if (h > MAX) { w = Math.round(w * (MAX / h)); h = MAX; }
+               canvas.width = w; canvas.height = h;
+               canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+               jobImageData = canvas.toDataURL("image/jpeg", 0.5);
+            } catch(e) { console.log("Silent fallback activated"); }
+         };
+         img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
     }
-    function removeJobImage() { jobImageData = ""; document.getElementById('post-image-preview').style.display = 'none'; }
+    function removeJobImage() { jobImageData = ""; document.getElementById('post-image-preview').style.display = 'none'; document.getElementById('post-image-input').value = ""; }
     function showToast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
     function logout() { if(confirm("Logout?")) { localStorage.removeItem('tnpvc_user'); window.location.href = 'index.html'; } }
 
@@ -859,7 +1164,7 @@
       const list = document.getElementById('full-notif-list');
       const n = window.activeNotifs || [];
       if(n.length === 0) {
-        list.innerHTML = `<div style="text-align:center; padding:100px 20px;"><div style="font-size:50px; margin-bottom:12px;">🔔</div><p style="color:var(--text-muted); font-weight:700;">Your activity feed is empty.</p></div>`;
+        list.innerHTML = `<div style="text-align:center; padding:40px 20px; margin: 24px; background:#fff; border-radius: 24px; border: 1.5px dashed var(--border);"><div style="font-size:44px; margin-bottom:12px;">🔔</div><p style="color:var(--text-muted); font-weight:700; font-size:14px;">Your activity feed is empty.</p></div>`;
         return;
       }
       list.innerHTML = n.map(x => `
@@ -930,6 +1235,24 @@
         </div>
       `;
     });
+
+    // AUTO-SWIPE CAROUSEL LOGIC (5-Second Swipe)
+    (function startBannerCarousel() {
+      const scroller = document.querySelector('.home-promo-strip');
+      if(!scroller) return;
+      
+      let currentPos = 0;
+      const scrollCount = 3; // Number of hero banners
+
+      setInterval(() => {
+        currentPos = (currentPos + 1) % scrollCount;
+        const cardWidth = scroller.offsetWidth; 
+        scroller.scrollTo({
+          left: currentPos * cardWidth,
+          behavior: 'smooth'
+        });
+      }, 5000);
+    })();
   </script>
 </body>
 
