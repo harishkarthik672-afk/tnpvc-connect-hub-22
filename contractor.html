@@ -13,8 +13,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <style>
     :root {
-      --primary: #9086FF;
-      --primary-light: #EAE8FF;
+      --primary: #6A1FC2;
+      --primary-light: #F5EFFF;
       --bg: #F4F6F9;
       --card: #FFFFFF;
       --text-dark: #16202A;
@@ -834,6 +834,15 @@
       }
     });
 
+    // High-Power Real-time Sync (Contractor)
+    db.collection('jobs').where('postedBy', '==', u.phone || u.email).onSnapshot(snap => {
+      window.contractor_jobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+      renderDashboard();
+      if(document.getElementById('tab-bookings').classList.contains('active')) renderMyJobs();
+    });
+
+    function getJobs() { return window.contractor_jobs || []; }
+
     function renderDashboard() {
       const avatar = u.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=9086FF&color=fff`;
       if(document.getElementById('nav-profile-img')) document.getElementById('nav-profile-img').src = avatar;
@@ -847,6 +856,24 @@
       if(document.getElementById('stat-total-posts')) document.getElementById('stat-total-posts').textContent = all.length;
       if(document.getElementById('stat-finished-posts')) document.getElementById('stat-finished-posts').textContent = finished;
       if(document.getElementById('stat-total-spend')) document.getElementById('stat-total-spend').textContent = spend.toLocaleString('en-IN');
+      
+      const feed = document.getElementById('recent-feed');
+      if(feed) {
+        if(all.length === 0) {
+          feed.innerHTML = `<div align="center" style="padding:40px; color:#94A3B8; font-size:13px; font-weight:700;">No active posts yet</div>`;
+          return;
+        }
+        feed.innerHTML = all.slice(0,5).map(j => `
+          <div class="job-item" onclick="openJobDetails('${j.id}')">
+            <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=BEE3F8&color=3182CE'}">
+             <div class="j-info">
+               <div class="j-title">${j.title}</div>
+               <div class="j-meta"><span>${j.area}</span> <span>₹${j.budget}</span></div>
+             </div>
+             <div class="j-status ${j.status === 'Completed' ? 'done' : ''}">${j.status}</div>
+          </div>
+        `).join('');
+      }
       
       const diff = new Date(u.subExp).getTime() - new Date().getTime();
       const days = Math.ceil(diff / (1000 * 3600 * 24));

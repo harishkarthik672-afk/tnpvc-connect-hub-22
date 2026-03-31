@@ -10,9 +10,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
   :root {
-    --primary: #9086FF;
-    --primary-light: #EAE8FF;
-    --bg: #F8FAFC;
+    --primary: #6A1FC2;
+    --primary-light: #F5EFFF;
+    --primary-dark: #5818A8;
     --card: #FFFFFF;
     --text-dark: #1E293B;
     --text-muted: #64748B;
@@ -599,8 +599,10 @@
 
 <script>
   // Initial Setup
-  const tnpvc_u = JSON.parse(localStorage.getItem('tnpvc_user'));
-  if(!tnpvc_u) window.location.replace('index.html');
+  const tnpvc_u = JSON.parse(localStorage.getItem('tnpvc_user') || '{}');
+  if(!tnpvc_u.name) window.location.replace('index.html');
+  const userDistricts = [tnpvc_u.district, tnpvc_u.districtExtra].filter(d => d);
+  console.log("Monitoring Districts:", userDistricts);
 
   // Firebase Safety Init
   const firebaseConfig = { 
@@ -751,24 +753,24 @@
   }
 
   // Jobs Listener (High Power Real-time Delivery & Toast Alert)
+  // Jobs Listener (High Power Real-time Delivery for BOTH Districts)
   let lastSeenJobId = null;
+
   db.collection("jobs")
-    .where("district", "==", tnpvc_u.district)
+    .where("district", "in", userDistricts)
     .onSnapshot(snap => {
       let rawJobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
       
-      // Native filtering to completely bypass Firestore "Composite Index" silent failures
       let activeJobs = rawJobs.filter(job => job.status === "Active");
       window.allJobs = activeJobs.sort((a, b) => b.createdAt - a.createdAt);
       window.jobs_cache = window.allJobs;
       
-      // Powerful logic to alert user if a truly NEW job is found
       if(snap.docs.length > 0 && lastSeenJobId && snap.docs[0].id !== lastSeenJobId) {
         showToast("🔥 NEW JOB POSTED! Check Marketplace.");
-        if(typeof navigator.vibrate === "function") navigator.vibrate(200); // Pulse effect
+        if(typeof navigator.vibrate === "function") navigator.vibrate(200);
       }
       if(snap.docs.length > 0) lastSeenJobId = snap.docs[0].id;
-      else if(!lastSeenJobId) lastSeenJobId = "none"; // Init
+      else if(!lastSeenJobId) lastSeenJobId = "none";
 
       if(document.getElementById('tab-orders').classList.contains('active')) renderJobs();
     });
@@ -807,7 +809,7 @@
     `).join('');
 
     // 2. Render Jobs for this Category
-    let jobs = (window.jobs_cache || []).filter(j => j.district === tnpvc_u.district && j.category === windowCategoryFilter).reverse();
+    let jobs = (window.jobs_cache || []).filter(j => userDistricts.includes(j.district) && j.category === windowCategoryFilter).reverse();
     
     if(jobs.length === 0) {
       jobList.innerHTML = `<div style="text-align:center; padding:40px; background:#fff; border-radius:24px; border:1.5px dashed var(--border);"><p style="font-size:13px; color:var(--text-muted); font-weight:700;">No active ${windowCategoryFilter} orders in ${tnpvc_u.district} right now.</p></div>`;

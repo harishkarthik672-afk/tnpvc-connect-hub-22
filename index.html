@@ -192,8 +192,9 @@
     text-transform: uppercase;
   }
   :root {
-    --brand: #0085FF;
-    --brand-dark: #0066CC;
+    --brand: #6A1FC2;
+    --brand-dark: #5818A8;
+    --brand-light: #F5EFFF;
     --text: #111111;
     --text-muted: #888888;
     --bg: #FFFFFF;
@@ -235,10 +236,13 @@
     text-align: center;
     flex: 0 1 auto;
   }
-  .illustration-wrap svg {
+  .illustration-wrap img {
     width: 100%;
-    max-width: 180px; /* Smaller illustration for mobile */
+    max-width: 240px; /* Large prominent logo */
     height: auto;
+    border-radius: 20px;
+    /* Optional: add subtle shadow if it's a transparent logo */
+    filter: drop-shadow(0 10px 15px rgba(106,31,194,0.1));
   }
 
   .hello-text {
@@ -466,21 +470,40 @@
     transition: transform 0.3s;
     box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   }
-  .toggle-switch input:checked + .toggle-track { background: #0085FF; }
+  .toggle-switch input:checked + .toggle-track { background: var(--brand); }
   .toggle-switch input:checked + .toggle-track::after { transform: translateX(22px); }
 
   /* Profile Screen Layout */
   #screen-profile {
-    background: #F2F4F8 !important;
+    background: #F8FAFC !important;
     padding: 0 !important;
     overflow-y: auto !important;
-    justify-content: flex-start !important;
+    display: block; /* Removed !important to let .hidden work */
   }
+  #screen-profile .form-wrap {
+    padding: 0 24px 40px; /* Padding for internal form content */
+    margin-top: -30px; /* Overlap effect */
+    position: relative;
+    z-index: 10;
+  }
+
   .profile-header-banner {
-    background: linear-gradient(135deg, #0055CC 0%, #0085FF 100%);
-    padding: 48px 24px 70px;
+    background: linear-gradient(rgba(106,31,194,0.6), rgba(168,85,247,0.6)), url('details.jpg'); /* Overlay + Image */
+    background-size: cover;
+    background-position: center;
+    padding: 30px 24px 70px;
     position: relative;
     text-align: center;
+  }
+  .profile-header-banner .profile-logo {
+    width: 60px;
+    height: 60px;
+    margin: -10px auto 14px;
+    display: block;
+    border-radius: 12px;
+    background: #FFF;
+    padding: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
   .profile-header-banner h1 { font-size: 24px; font-weight: 800; color: #fff; }
   .profile-header-banner p { font-size: 13px; opacity: 0.85; margin-top: 4px; font-weight: 500; color: rgba(255,255,255,0.75); }
@@ -634,21 +657,25 @@
     padding: 17px;
     border-radius: 16px;
     border: none;
-    background: linear-gradient(135deg, #0055CC, #0085FF);
+    background: linear-gradient(135deg, #6A1FC2, #A855F7);
     color: #fff;
     font-family: inherit;
     font-size: 16px;
     font-weight: 800;
     cursor: pointer;
     margin-top: 8px;
-    box-shadow: 0 6px 20px rgba(0,133,255,0.3);
+    box-shadow: 0 6px 20px rgba(106,31,194,0.3);
     letter-spacing: -0.01em;
     transition: transform 0.15s, box-shadow 0.15s;
   }
   .btn-profile-save:active {
     transform: scale(0.97);
-    box-shadow: 0 2px 8px rgba(0,133,255,0.2);
+    box-shadow: 0 2px 8px rgba(106,31,194,0.2);
   }
+
+  .pf-card { display: none; } /* Hide all steps by default */
+  .pf-card.active { display: block; animation: slideIn 0.3s ease-out; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
   .section-divider { display: none; }
 </style>
 </head>
@@ -691,12 +718,7 @@
     <!-- HELLO SCREEN -->
     <div class="screen" id="screen-hello">
       <div class="illustration-wrap">
-        <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="200" cy="150" r="100" fill="#F0F9FF"/>
-          <path d="M150 250 Q200 120 250 250" fill="#BFDBFE"/>
-          <circle cx="200" cy="110" r="35" fill="#FDBA74"/>
-          <path d="M220 110 Q240 90 260 110" stroke="#000" stroke-width="2.5" fill="none"/>
-        </svg>
+        <img src="logo.png" alt="TN-PVC Interiors Logo">
       </div>
 
       <div class="hello-text">
@@ -768,12 +790,16 @@
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
         </div>
+        <img src="logo.png" class="profile-logo" alt="Logo">
         <h1>Complete Profile</h1>
         <p>Fill in your details to get started</p>
         <div class="profile-steps">
           <div class="step-pill active"></div>
           <div class="step-pill"></div>
           <div class="step-pill"></div>
+          <div class="step-pill"></div>
+          <div class="step-pill"></div>
+          <div class="step-pill"></div> <!-- Total 6 Steps -->
         </div>
       </div>
 
@@ -801,15 +827,24 @@
       <div class="profile-form-body">
         <form id="profile-form" onsubmit="return false;">
 
-          <!-- Personal Info Card -->
-          <div class="pf-card">
-            <div class="pf-card-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2.2" stroke-linecap="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-              Personal Info
+          <!-- STEP 1: Profile Photo -->
+          <div class="pf-card active">
+            <div class="pf-card-title">Profile Photo (Step 1/6)</div>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:15px; padding:20px 0;">
+              <div class="avatar-circle" onclick="document.getElementById('p-photo-input').click()" style="width:100px; height:100px; border:3px solid var(--brand);">
+                <img src="logo.png" id="p-photo-preview" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                <div class="camera-badge" style="width:30px; height:30px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </div>
+              </div>
+              <input type="file" id="p-photo-input" hidden accept="image/*" onchange="previewPhoto(event)">
+              <p style="font-size:13px; color:#666; font-weight:600;">Choose your profile picture</p>
             </div>
+          </div>
+
+          <!-- STEP 2: Personal Info -->
+          <div class="pf-card">
+            <div class="pf-card-title">Personal Info (Step 2/6)</div>
             <div class="pf-input-row">
               <label>Full Name *</label>
               <input type="text" id="p-name" placeholder="e.g. Ravi Kumar" required>
@@ -818,6 +853,11 @@
               <label>Phone Number *</label>
               <input type="tel" id="p-phone" placeholder="9876543210" required maxlength="10">
             </div>
+          </div>
+
+          <!-- STEP 3: Verification -->
+          <div class="pf-card">
+            <div class="pf-card-title">Verification (Step 3/6)</div>
             <div class="pf-input-row">
               <label>Aadhaar Number *</label>
               <input type="text" id="p-aadhaar" placeholder="12-digit Aadhaar" required maxlength="12" inputmode="numeric">
@@ -825,7 +865,7 @@
             <div class="pf-input-row">
               <label>District *</label>
               <select id="p-district" required>
-                <option value="" disabled selected>Select your district</option>
+                <option value="" disabled selected>Select district</option>
                 <option>Ariyalur</option><option>Chengalpattu</option><option>Chennai</option>
                 <option>Coimbatore</option><option>Cuddalore</option><option>Dharmapuri</option>
                 <option>Dindigul</option><option>Erode</option><option>Kallakurichi</option>
@@ -841,48 +881,30 @@
                 <option>Viluppuram</option><option>Virudhunagar</option>
               </select>
             </div>
-            <div class="pf-input-row">
-              <label>Full Address *</label>
-              <input type="text" id="p-address" placeholder="Door No., Street, City" required>
+            <div class="pf-input-row" id="row-district-extra" style="display:none;">
+              <label>Additional District (Optional)</label>
+              <select id="p-district-extra">
+                <option value="" disabled selected>Select additional district</option>
+                <option>Ariyalur</option><option>Chengalpattu</option><option>Chennai</option>
+                <option>Coimbatore</option><option>Cuddalore</option><option>Dharmapuri</option>
+                <option>Dindigul</option><option>Erode</option><option>Kallakurichi</option>
+                <option>Kanchipuram</option><option>Kanyakumari</option><option>Karur</option>
+                <option>Krishnagiri</option><option>Madurai</option><option>Mayiladuthurai</option>
+                <option>Nagapattinam</option><option>Namakkal</option><option>Nilgiris</option>
+                <option>Perambalur</option><option>Pudukkottai</option><option>Ramanathapuram</option>
+                <option>Ranipet</option><option>Salem</option><option>Sivaganga</option>
+                <option>Tenkasi</option><option>Thanjavur</option><option>Theni</option>
+                <option>Thoothukudi</option><option>Tiruchirappalli</option><option>Tirunelveli</option>
+                <option>Tirupathur</option><option>Tiruppur</option><option>Tiruvallur</option>
+                <option>Tiruvannamalai</option><option>Tiruvarur</option><option>Vellore</option>
+                <option>Viluppuram</option><option>Virudhunagar</option>
+              </select>
             </div>
           </div>
 
-          <!-- Business Info Card -->
+          <!-- STEP 3: Habitat -->
           <div class="pf-card">
-            <div class="pf-card-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2.2" stroke-linecap="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
-              </svg>
-              Business Info
-            </div>
-            <div class="pf-input-row">
-              <label>Store / Business Name</label>
-              <input type="text" id="p-store-name" placeholder="e.g. Ravi PVC Interiors">
-            </div>
-            <div class="pf-input-row">
-              <label>Store Address</label>
-              <input type="text" id="p-store-address" placeholder="Shop No., Street, City">
-            </div>
-            <div class="pf-input-row">
-              <label>PAN Card Number</label>
-              <input type="text" id="p-pan" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase;">
-            </div>
-            <div class="pf-input-row">
-              <label>Experience (Years)</label>
-              <input type="number" id="p-experience" placeholder="e.g. 5" min="0" max="60">
-            </div>
-          </div>
-
-          <!-- Personal Declaration Card -->
-          <div class="pf-card">
-            <div class="pf-card-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0085FF" stroke-width="2.2" stroke-linecap="round">
-                <path d="M9 11l3 3L22 4"/>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-              </svg>
-              Personal Declaration
-            </div>
+            <div class="pf-card-title">Habitat (Step 3/5)</div>
             <div class="toggle-row">
               <div>
                 <div class="toggle-label">Drinking Habit</div>
@@ -895,9 +917,34 @@
             </div>
           </div>
 
-          <button type="button" class="btn-profile-save" id="btn-save-profile" onclick="saveProfile()">
-            Save &amp; Continue &#x2192;
-          </button>
+          <!-- STEP 4: Full Address -->
+          <div class="pf-card">
+            <div class="pf-card-title">Address (Step 4/5)</div>
+            <div class="pf-input-row">
+              <label>Full Residential Address *</label>
+              <input type="text" id="p-address" placeholder="Door No, Street, City" required>
+            </div>
+          </div>
+
+          <!-- STEP 5: Business -->
+          <div class="pf-card">
+            <div class="pf-card-title">Business (Step 5/5)</div>
+            <div class="pf-input-row">
+              <label>Do you have a Company/Store?</label>
+              <input type="text" id="p-store-name" placeholder="Company Name (Optional)">
+            </div>
+            <div class="pf-input-row">
+              <label>Company Address</label>
+              <input type="text" id="p-store-address" placeholder="Company Address">
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:20px;">
+             <button type="button" class="btn-outline" style="flex:1; border-radius:12px; padding:12px;" onclick="moveProfileStep(-1)">Back</button>
+             <button type="button" class="btn-profile-save" style="flex:2; margin:0;" id="btn-save-profile" onclick="moveProfileStep(1)">
+               Next Step &#x2192;
+             </button>
+          </div>
 
         </form>
       </div>
@@ -956,26 +1003,10 @@
         const uStr = localStorage.getItem('tnpvc_user');
         if (uStr) {
           const u = JSON.parse(uStr);
-          if (u && u.role) {
-            if (u.profileCompleted && u.isSubscribed) {
-              // Hide splash then redirect
-              if(window._hideSplash) window._hideSplash();
-              window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
-            } else if (u.profileCompleted) {
-              // Direct to App, skip payment
-              document.addEventListener('DOMContentLoaded', () => {
-                window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
-              });
-            } else {
-              // Wait for DOM to finish assembling to uncover the profile setup screen directly
-              document.addEventListener('DOMContentLoaded', () => {
-                document.getElementById('screen-hello').classList.add('hidden');
-                document.getElementById('screen-auth').classList.add('hidden');
-                document.getElementById('modal-role').classList.add('hidden');
-                document.getElementById('screen-profile').classList.remove('hidden');
-                document.getElementById('p-name').value = u.name || '';
-              });
-            }
+          if (u && u.role && u.profileCompleted) {
+            // STRAIGHT TO MAIN PAGE
+            if(window._hideSplash) window._hideSplash();
+            window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
           }
         }
       } catch(e) {}
@@ -1003,6 +1034,28 @@
     const db = firebase.firestore();
     const googleProvider = new firebase.auth.GoogleAuthProvider();
     const fbProvider = new firebase.auth.FacebookAuthProvider();
+
+    window.proceedToApp = function(userData) {
+      if(!userData) return;
+      
+      const extraDist = document.getElementById('row-district-extra');
+      if(extraDist) extraDist.style.display = (userData.role === 'labour') ? 'block' : 'none';
+
+      document.getElementById('screen-hello').classList.add('hidden');
+      document.getElementById('screen-auth').classList.add('hidden');
+      document.getElementById('modal-role').classList.add('hidden');
+      document.getElementById('screen-profile').classList.add('hidden');
+
+      // FORCE PROFILE COMPLETION IF LABOUR IS MISSING DISTRICT EXTRA
+      const isLabourMissingExtra = (userData.role === 'labour' && !userData.districtExtra);
+
+      if (!userData.profileCompleted || isLabourMissingExtra) {
+        document.getElementById('screen-profile').classList.remove('hidden');
+        document.getElementById('p-name').value = userData.name || '';
+      } else {
+        window.location.replace(userData.role === 'labour' ? 'labour.html' : 'contractor.html');
+      }
+    };
 
     function showAuth(m) {
       document.getElementById('screen-hello').classList.add('hidden');
@@ -1047,7 +1100,12 @@
     function setModalRole(role) {
       window.selectedRole = role;
       document.querySelectorAll('.m-role-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('modal-role-' + role).classList.add('active');
+      const activeBtn = Array.from(document.querySelectorAll('.m-role-btn')).find(b => b.textContent.toLowerCase().includes(role));
+      if(activeBtn) activeBtn.classList.add('active');
+
+      // Update District Extra Visibility right now
+      const extraDist = document.getElementById('row-district-extra');
+      if(extraDist) extraDist.style.display = (role === 'labour') ? 'block' : 'none';
     }
 
     // --- PROFILE COMPLETION LOGIC ---
@@ -1123,12 +1181,92 @@
       }
     };
 
-    window.handleProfileBack = function() {
-      if(confirm("Go back to Welcome Screen? (This will sign you out)")) {
-        auth.signOut().then(() => {
-          localStorage.removeItem('tnpvc_user');
-          window.location.reload();
-        });
+    let currentProfileStep = 1;
+
+    window.moveProfileStep = function(n) {
+      const cards = document.querySelectorAll('.pf-card');
+      const pills = document.querySelectorAll('.step-pill');
+      
+      // Validation if moving forward
+      if(n > 0) {
+        const currentCard = cards[currentProfileStep - 1];
+        const inputs = currentCard.querySelectorAll('input[required], select[required]');
+        for(let i of inputs) {
+          if(!i.value) { alert("Please fill required details!"); return; }
+        }
+      }
+
+      currentProfileStep += n;
+      if(currentProfileStep < 1) currentProfileStep = 1;
+      if(currentProfileStep > cards.length) { 
+        saveProfile(); 
+        return; 
+      }
+
+      cards.forEach((c, idx) => {
+        c.classList.toggle('active', idx === currentProfileStep - 1);
+      });
+      pills.forEach((p, idx) => {
+        p.classList.toggle('active', idx === currentProfileStep - 1);
+      });
+    };
+
+    window.previewPhoto = function(e) {
+       const file = e.target.files[0];
+       if(file) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+             const imgStep = document.getElementById('p-photo-preview-step');
+             if(imgStep) imgStep.src = ev.target.result;
+             
+             let u = JSON.parse(localStorage.getItem('tnpvc_user') || '{}');
+             u.photo = ev.target.result;
+             localStorage.setItem('tnpvc_user', JSON.stringify(u));
+          };
+          reader.readAsDataURL(file);
+       }
+    };
+
+    window.saveProfile = function() {
+      try {
+        const name = document.getElementById('p-name').value.trim();
+        const phone = document.getElementById('p-phone').value.trim();
+        const aadhaar = document.getElementById('p-aadhaar').value.trim();
+        const district = document.getElementById('p-district').value;
+        const districtExtra = document.getElementById('p-district-extra').value;
+        const addr = document.getElementById('p-address').value.trim();
+        const storeName = document.getElementById('p-store-name').value.trim();
+        const storeAddress = document.getElementById('p-store-address').value.trim();
+        const drinking = document.getElementById('p-drinking').checked;
+
+        let u = JSON.parse(localStorage.getItem('tnpvc_user') || '{}');
+        u.name = name;
+        u.phone = phone;
+        u.aadhaar = aadhaar;
+        u.district = district;
+        u.districtExtra = districtExtra || '';
+        u.address = addr;
+        u.storeName = storeName;
+        u.storeAddress = storeAddress;
+        u.drinkingHabit = drinking ? 'Yes' : 'No';
+        u.profileCompleted = true;
+        u.isSubscribed = true;
+        u.updatedAt = new Date().toISOString();
+        
+        localStorage.setItem('tnpvc_user', JSON.stringify(u));
+
+        const btn = document.getElementById('btn-save-profile');
+        if(btn) { btn.textContent = 'Launching...'; btn.disabled = true; }
+
+        window.proceedToApp(u);
+
+        if (typeof db !== 'undefined' && db) {
+          db.collection('users').doc(phone || u.email).set(u).catch(err => {
+            console.error("Cloud Sync Failed", err);
+          });
+        }
+      } catch (e) {
+        alert("Error: " + e.message);
       }
     };
 
@@ -1140,7 +1278,6 @@
              const img = document.getElementById('p-photo-preview');
              img.src = ev.target.result;
              img.style.display = 'block';
-             
              let u = JSON.parse(localStorage.getItem('tnpvc_user') || '{}');
              u.photo = ev.target.result;
              localStorage.setItem('tnpvc_user', JSON.stringify(u));
@@ -1272,15 +1409,28 @@
         if (isLogin) {
           const res = await auth.signInWithEmailAndPassword(email, pass);
           
-          const storedProfile = JSON.parse(localStorage.getItem('tnpvc_user') || '{}');
+          let storedProfile = JSON.parse(localStorage.getItem('tnpvc_user') || '{}');
+          
+          // TRY TO FETCH FROM FIRESTORE TO SEE IF THEY ALREADY HAVE A PROFILE
+          try {
+            const userDoc = await db.collection('users').get();
+            // Since we use phone or email as doc ID, let's try searching by email
+            const q = await db.collection('users').where('email', '==', res.user.email).limit(1).get();
+            
+            if (!q.empty) {
+               storedProfile = q.docs[0].data();
+            }
+          } catch(e) { console.warn("Firestore fetch failed, relying on local state."); }
+
           const finalRole = storedProfile.role || 'contractor';
           const isCompleted = storedProfile.profileCompleted || false;
 
           const u = { 
-            name: res.user.displayName || storedProfile.name || 'User', 
+            name: storedProfile.name || res.user.displayName || 'User', 
             email: res.user.email,
             role: finalRole,
-            profileCompleted: isCompleted
+            profileCompleted: isCompleted,
+            ...storedProfile
           };
           localStorage.setItem('tnpvc_user', JSON.stringify(u));
           window.proceedToApp(u);
@@ -1311,11 +1461,16 @@
       try {
         const result = await auth.getRedirectResult();
         if (result && result.user) {
-          // Store user globally so modal can access it
           window.pendingUser = result.user;
-          
-          // Show the role modal AFTER login
           document.getElementById('modal-role').classList.remove('hidden');
+        } else {
+          // ALSO RE-CHECK SESSION HERE
+          const uStr = localStorage.getItem('tnpvc_user');
+          if (uStr) {
+            const userData = JSON.parse(uStr);
+            const extraDist = document.getElementById('row-district-extra');
+            if(extraDist) extraDist.style.display = (userData.role === 'labour') ? 'block' : 'none';
+          }
         }
       } catch (error) {
         console.error("Redirect Auth Error", error);
