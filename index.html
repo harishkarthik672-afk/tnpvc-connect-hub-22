@@ -1003,10 +1003,21 @@
         const uStr = localStorage.getItem('tnpvc_user');
         if (uStr) {
           const u = JSON.parse(uStr);
-          if (u && u.role && u.profileCompleted) {
-            // STRAIGHT TO MAIN PAGE
-            if(window._hideSplash) window._hideSplash();
-            window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
+          if (u && u.role) {
+            // IF ALREADY HAS DATA, HIDE THE WELCOME BUTTONS IMMEDIATELY
+            const hel = document.getElementById('screen-hello');
+            if(hel) hel.classList.add('hidden');
+            
+            if (u.profileCompleted) {
+              // STRAIGHT TO MAIN PAGE
+              if(window._hideSplash) window._hideSplash();
+              console.log("Session Recovery: Already Completed. Redirecting...");
+              window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
+            } else {
+              // Profile Incomplete - Show profile setup screen instead of hello screen
+              console.log("Session Recovery: Profile Incomplete. Hiding Welcome Page.");
+              // This will be handled fully after DOM is complete or in handleAuthSuccess
+            }
           }
         }
       } catch(e) {}
@@ -1298,7 +1309,17 @@
     window.handleGoogleImmediate = async () => {
       window.authMethod = 'google';
       localStorage.setItem('tnpvc_auth_method', 'google');
-      await auth.signInWithRedirect(googleProvider);
+
+      // HIDE WELCOME SCREEN IMMEDIATELY TO AVOID "BACK TO WELCOME" FEEL
+      const hel = document.getElementById('screen-hello');
+      if(hel) hel.classList.add('hidden');
+
+      try {
+        await auth.signInWithRedirect(googleProvider);
+      } catch(e) {
+        if(hel) hel.classList.remove('hidden'); // Show back if failed
+        alert("Google Login Init Failed: " + e.message);
+      }
     };
 
     window.handleModalContinue = function() {
