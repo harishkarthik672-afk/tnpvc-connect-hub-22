@@ -1162,18 +1162,12 @@
           localStorage.setItem('tnpvc_user', JSON.stringify(u));
           window.proceedToApp(u);
         } else {
+          // Persist role choice before redirecting
+          localStorage.setItem('tnpvc_pending_role', role || 'contractor');
           const provider = method === 'google' ? googleProvider : fbProvider;
-          const result = await auth.signInWithPopup(provider);
-          const user = result.user;
           
-          const u = {
-            name: user.displayName || 'TNPVC User',
-            email: user.email,
-            role: role || 'contractor',
-            profileCompleted: false
-          };
-          localStorage.setItem('tnpvc_user', JSON.stringify(u));
-          window.proceedToApp(u);
+          // Switch to Redirect for better mobile support
+          await auth.signInWithRedirect(provider);
         }
       } catch (error) {
         console.error("Auth Error", error);
@@ -1256,6 +1250,32 @@
       } catch (error) {
         console.error("Manual Auth Error", error);
         window.executeAuthFallback(error.message);
+      }
+    });
+
+    // Catch Redirect Result on Load
+    window.addEventListener('load', async () => {
+      try {
+        const result = await auth.getRedirectResult();
+        if (result && result.user) {
+          const pendingRole = localStorage.getItem('tnpvc_pending_role') || 'contractor';
+          localStorage.removeItem('tnpvc_pending_role');
+          
+          const u = {
+            name: result.user.displayName || 'TNPVC User',
+            email: result.user.email,
+            role: pendingRole,
+            profileCompleted: false
+          };
+          localStorage.setItem('tnpvc_user', JSON.stringify(u));
+          window.proceedToApp(u);
+        }
+      } catch (error) {
+        console.error("Redirect Auth Error", error);
+        // Fallback for redirect errors
+        if (error.code === 'auth/unauthorized-domain') {
+          alert("Domain Error: " + error.message);
+        }
       }
     });
 
