@@ -1106,14 +1106,24 @@
       safeHide('modal-role');
       safeHide('screen-profile');
 
-      const extraDistW = document.getElementById('row-district-extra');
-      if(extraDistW) extraDistW.style.display = (userData.role === 'labour') ? 'block' : 'none';
+      const extraRow = document.getElementById('row-district-extra');
+      const pHeader = document.querySelector('#screen-profile h2');
+      
+      if (userData.role === 'labour') {
+         if(extraRow) extraRow.style.display = 'block';
+         if(pHeader) pHeader.textContent = 'Worker Profile Setup';
+         console.log("Labour profile mode activated.");
+      } else {
+         if(extraRow) extraRow.style.display = 'none';
+         if(pHeader) pHeader.textContent = 'Contractor Profile Setup';
+         console.log("Contractor profile mode activated.");
+      }
 
       // FORCE PROFILE COMPLETION IF LABOUR IS MISSING DISTRICT EXTRA (Multi-district filtering requirement)
       const isLabourMissingExtra = (userData.role === 'labour' && !userData.districtExtra && userData.profileCompleted);
       
       if (!userData.profileCompleted || isLabourMissingExtra) {
-        console.log("Profile incomplete, showing profile setup screen.");
+        console.log("Showing tailored profile setup screen for role:", userData.role);
         safeShow('screen-profile');
         const nameP = document.getElementById('p-name');
         if(nameP) nameP.value = userData.name || '';
