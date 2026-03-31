@@ -1038,29 +1038,31 @@
     window.proceedToApp = function(userData) {
       if(!userData) return;
       if (typeof userData === 'string') userData = JSON.parse(userData);
+      console.log("Proceeding to App for user:", userData.email, "Role:", userData.role);
       
-      const extraDist = document.getElementById('row-district-extra');
-      if(extraDist) extraDist.style.display = (userData.role === 'labour') ? 'block' : 'none';
+      const safeHide = (id) => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); };
+      const safeShow = (id) => { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); };
 
-      document.getElementById('screen-hello').classList.add('hidden');
-      document.getElementById('screen-auth').classList.add('hidden');
-      document.getElementById('modal-role').classList.add('hidden');
-      document.getElementById('screen-profile').classList.add('hidden');
+      safeHide('screen-hello');
+      safeHide('screen-auth');
+      safeHide('modal-role');
+      safeHide('screen-profile');
+
+      const extraDistW = document.getElementById('row-district-extra');
+      if(extraDistW) extraDistW.style.display = (userData.role === 'labour') ? 'block' : 'none';
 
       // FORCE PROFILE COMPLETION IF LABOUR IS MISSING DISTRICT EXTRA (Multi-district filtering requirement)
       const isLabourMissingExtra = (userData.role === 'labour' && !userData.districtExtra && userData.profileCompleted);
       
       if (!userData.profileCompleted || isLabourMissingExtra) {
-        document.getElementById('screen-profile').classList.remove('hidden');
-        document.getElementById('p-name').value = userData.name || '';
-        // If it's the specific labour-extra-district case, show step 3 directly or notify
-        if (isLabourMissingExtra) {
-           console.log("Labour user needs to set additional district for multi-district filtering.");
-           // Optional: currentProfileStep = 3; moveProfileStep(0); 
-        }
+        console.log("Profile incomplete, showing profile setup screen.");
+        safeShow('screen-profile');
+        const nameP = document.getElementById('p-name');
+        if(nameP) nameP.value = userData.name || '';
       } else {
-        console.log("Redirecting to " + userData.role + " dashboard...");
-        window.location.replace(userData.role === 'labour' ? 'labour.html' : 'contractor.html');
+        const targetUrl = userData.role === 'labour' ? 'labour.html' : 'contractor.html';
+        console.log("Everything perfect. Redirecting to:", targetUrl);
+        window.location.replace(targetUrl);
       }
     };
 
@@ -1492,8 +1494,14 @@
         }
       } catch (error) {
         console.error("Redirect Auth Error", error);
-        if (error.code === 'auth/unauthorized-domain') {
-          alert("Domain Error: " + error.message);
+        
+        let errorMsg = error.message;
+        if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/operation-not-allowed') {
+          console.warn("Domain Error/Auth not active. Using Fallback for testing.");
+          // Trigger Fallback so the user is NOT stuck
+          window.executeAuthFallback('Auth Error: ' + error.message);
+        } else {
+          alert("Login Error: " + errorMsg);
         }
       }
     });
