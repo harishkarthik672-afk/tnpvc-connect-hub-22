@@ -1157,6 +1157,7 @@
     }
 
     window.selectAppRole = function(role) {
+      console.log("Role selected:", role);
       window.selectedRole = role;
       document.querySelectorAll('.role-box').forEach(c => c.classList.remove('active'));
       const activeBox = document.getElementById('box-' + role);
@@ -1165,29 +1166,35 @@
       const btn = document.getElementById('btn-role-continue');
       if(btn) {
         btn.disabled = false;
+        btn.style.opacity = '1';
         btn.textContent = 'Continue as ' + (role.charAt(0).toUpperCase() + role.slice(1));
       }
     };
 
     window.handleRoleNextStep = function() {
       const role = window.selectedRole;
+      console.log("Proceeding with role:", role);
+      
       if(!role) {
         alert("Please select a role to continue!");
         return;
       }
       
-      const user = auth.currentUser || window.pendingUser;
-      if(user) {
+      const fbUser = auth.currentUser || window.pendingUser;
+      if(fbUser) {
         const u = {
-          name: user.displayName || 'TNPVC User',
-          email: user.email,
+          name: fbUser.displayName || 'TNPVC User',
+          email: fbUser.email || 'user@example.com',
           role: role,
           profileCompleted: false
         };
         localStorage.setItem('tnpvc_user', JSON.stringify(u));
+        console.log("Setting local session. Proceeding to profile setup...");
         window.proceedToApp(u);
       } else {
-        window.executeAuthFallback('Role defined, no user found.');
+        // Fallback session for UI testing
+        console.warn("No active user session found, using fallback for profile setup.");
+        window.executeAuthFallback("Role defined, missing session.");
       }
     };
 
