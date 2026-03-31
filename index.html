@@ -1037,6 +1037,7 @@
 
     window.proceedToApp = function(userData) {
       if(!userData) return;
+      if (typeof userData === 'string') userData = JSON.parse(userData);
       
       const extraDist = document.getElementById('row-district-extra');
       if(extraDist) extraDist.style.display = (userData.role === 'labour') ? 'block' : 'none';
@@ -1046,13 +1047,19 @@
       document.getElementById('modal-role').classList.add('hidden');
       document.getElementById('screen-profile').classList.add('hidden');
 
-      // FORCE PROFILE COMPLETION IF LABOUR IS MISSING DISTRICT EXTRA
-      const isLabourMissingExtra = (userData.role === 'labour' && !userData.districtExtra);
-
+      // FORCE PROFILE COMPLETION IF LABOUR IS MISSING DISTRICT EXTRA (Multi-district filtering requirement)
+      const isLabourMissingExtra = (userData.role === 'labour' && !userData.districtExtra && userData.profileCompleted);
+      
       if (!userData.profileCompleted || isLabourMissingExtra) {
         document.getElementById('screen-profile').classList.remove('hidden');
         document.getElementById('p-name').value = userData.name || '';
+        // If it's the specific labour-extra-district case, show step 3 directly or notify
+        if (isLabourMissingExtra) {
+           console.log("Labour user needs to set additional district for multi-district filtering.");
+           // Optional: currentProfileStep = 3; moveProfileStep(0); 
+        }
       } else {
+        console.log("Redirecting to " + userData.role + " dashboard...");
         window.location.replace(userData.role === 'labour' ? 'labour.html' : 'contractor.html');
       }
     };
@@ -1109,23 +1116,7 @@
     }
 
     // --- PROFILE COMPLETION LOGIC ---
-    window.proceedToApp = function(userData) {
-      if (typeof userData === 'string') userData = JSON.parse(userData);
-      
-      // Hide all possible screens 
-      document.getElementById('screen-hello').classList.add('hidden');
-      document.getElementById('screen-auth').classList.add('hidden');
-      document.getElementById('modal-role').classList.add('hidden');
-      document.getElementById('screen-profile').classList.add('hidden');
 
-      if (!userData.profileCompleted) {
-        document.getElementById('screen-profile').classList.remove('hidden');
-        document.getElementById('p-name').value = userData.name || '';
-      } else {
-        // Skip subscription check and go to dashboard
-        window.location.replace(userData.role === 'labour' ? 'labour.html' : 'contractor.html');
-      }
-    };
 
     window.saveProfile = function() {
       try {
@@ -1458,14 +1449,41 @@
 
     // Catch Redirect Result on Load
     window.addEventListener('load', async () => {
+      // Hide login logic IF we already have a logged-in user in localStorage and they are fully completed
+      const uStr = localStorage.getItem('tnpvc_user');
+      if (uStr) {
+        const userData = JSON.parse(uStr);
+        if (userData.profileCompleted && userData.role) {
+           console.log("Auto-recovery: Logged in as " + userData.role);
+           // window.proceedToApp(userData); // Already handled in checkSession above?
+           // Actually, checkSession runs faster and earlier, so this is just safety.
+        }
+      }
+
       try {
         const result = await auth.getRedirectResult();
         if (result && result.user) {
-          window.pendingUser = result.user;
-          document.getElementById('modal-role').classList.remove('hidden');
+          // If a user just logged in via Google, check if they exist in Firestore
+          let existingProfile = null;
+          try {
+             // Query by email
+             const q = await db.collection('users').where('email', '==', result.user.email).limit(1).get();
+             if (!q.empty) {
+                existingProfile = q.docs[0].data();
+             }
+          } catch(e) { console.warn("Firestore check failed on redirect", e); }
+
+          if (existingProfile && existingProfile.role && existingProfile.profileCompleted) {
+             // USER ALREADY EXISTS - GO STRAIGHT TO APP
+             localStorage.setItem('tnpvc_user', JSON.stringify(existingProfile));
+             window.proceedToApp(existingProfile);
+          } else {
+             // NEW USER - ASK FOR ROLE
+             window.pendingUser = result.user;
+             document.getElementById('modal-role').classList.remove('hidden');
+          }
         } else {
-          // ALSO RE-CHECK SESSION HERE
-          const uStr = localStorage.getItem('tnpvc_user');
+          // No redirect result, check session again for UI stability
           if (uStr) {
             const userData = JSON.parse(uStr);
             const extraDist = document.getElementById('row-district-extra');
@@ -1480,8 +1498,23 @@
       }
     });
 
-    auth.onAuthStateChanged((user) => {
-      // Logic for session persistence
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        // Double check if we need to recover profile from Firestore in background
+        const uStr = localStorage.getItem('tnpvc_user');
+        if (!uStr) {
+          try {
+             const q = await db.collection('users').where('email', '==', user.email).limit(1).get();
+             if (!q.empty) {
+                const existingProfile = q.docs[0].data();
+                if (existingProfile.profileCompleted) {
+                   localStorage.setItem('tnpvc_user', JSON.stringify(existingProfile));
+                   window.proceedToApp(existingProfile);
+                }
+             }
+          } catch(e) { console.error("Background auth recovery failed", e); }
+        }
+      }
     });
   </script>
 </body>
