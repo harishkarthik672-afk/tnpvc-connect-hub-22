@@ -1451,53 +1451,62 @@
 
     // Catch Redirect Result on Load
     window.addEventListener('load', async () => {
-      const uStr = localStorage.getItem('tnpvc_user');
       try {
         const result = await auth.getRedirectResult();
         if (result && result.user) {
-          window.checkSessionAndRecover(result.user);
+          window.handleAuthSuccess(result.user);
         } else {
-          // If no redirect result but session exists in storage, UI sync only
-          if (uStr) {
-            const userData = JSON.parse(uStr);
-            const extraDist = document.getElementById('row-district-extra');
-            if(extraDist) extraDist.style.display = (userData.role === 'labour') ? 'block' : 'none';
-          }
+           // If no redirect, just ensure UI reflects current status
+           const uStr = localStorage.getItem('tnpvc_user');
+           if (uStr) {
+             const u = JSON.parse(uStr);
+             if (u.role && u.profileCompleted) {
+                // If they are on index.html but fully logged in, push them away
+                window.location.replace(u.role === 'labour' ? 'labour.html' : 'contractor.html');
+             }
+           }
         }
       } catch (error) {
         console.error("Redirect Auth Error", error);
-        window.executeAuthFallback('Redirect Error');
+        window.executeAuthFallback('Redirect Issue');
       }
     });
 
-    window.checkSessionAndRecover = async (user) => {
-      if (!user) return;
-      console.log("Checking session for:", user.email);
-      
-      const uStr = localStorage.getItem('tnpvc_user');
+    window.handleAuthSuccess = async (user) => {
+      if(!user) return;
+      console.log("Auth Success for:", user.email);
+
+      const safeHide = (id) => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); };
+      const safeShow = (id) => { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); };
+
+      // Immediately hide welcome elements to avoid "coming back" feel
+      safeHide('screen-hello');
+      safeHide('screen-auth');
+
       let existingProfile = null;
-      
       try {
          const q = await db.collection('users').where('email', '==', user.email).limit(1).get();
          if (!q.empty) {
             existingProfile = q.docs[0].data();
          }
-      } catch(e) { console.warn("Firestore check failed", e); }
+      } catch(e) { console.warn("Firestore fetch error", e); }
 
       if (existingProfile && existingProfile.role && existingProfile.profileCompleted) {
-         localStorage.setItem('tnpvc_user', JSON.stringify(existingProfile));
-         window.proceedToApp(existingProfile);
+        // RETURNING COMPLETED USER
+        localStorage.setItem('tnpvc_user', JSON.stringify(existingProfile));
+        window.proceedToApp(existingProfile);
+      } else if (existingProfile && existingProfile.role) {
+        // RETURNING BUT PROFILE NOT COMPLETE
+        localStorage.setItem('tnpvc_user', JSON.stringify(existingProfile));
+        window.proceedToApp(existingProfile);
       } else {
-         // NEW USER or INCOMPLETE - Show Role Modal if no role yet
-         const storedUser = uStr ? JSON.parse(uStr) : {};
-         if (!storedUser.role) {
-            window.pendingUser = user;
-            const modal = document.getElementById('modal-role');
-            if(modal) modal.classList.remove('hidden');
-         } else {
-            // Already has a role in local storage but profile incomplete
-            window.proceedToApp(storedUser);
-         }
+        // BRAND NEW OR MISSING LOCAL DATA
+        window.pendingUser = user;
+        const u = { name: user.displayName || 'TNPVC User', email: user.email, profileCompleted: false };
+        localStorage.setItem('tnpvc_user', JSON.stringify(u));
+        
+        // Show role selection first!
+        safeShow('modal-role');
       }
     };
 
@@ -1505,7 +1514,7 @@
       if (user) {
         const uStr = localStorage.getItem('tnpvc_user');
         if (!uStr) {
-          window.checkSessionAndRecover(user);
+           window.handleAuthSuccess(user);
         }
       }
     });
