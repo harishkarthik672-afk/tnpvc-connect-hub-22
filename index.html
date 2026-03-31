@@ -1093,18 +1093,19 @@
     const googleProvider = new firebase.auth.GoogleAuthProvider();
     const fbProvider = new firebase.auth.FacebookAuthProvider();
 
+    // --- GLOBAL UTILITIES ---
+    window.safeHide = function(id) { const el = document.getElementById(id); if(el) el.classList.add('hidden'); };
+    window.safeShow = function(id) { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); };
+
     window.proceedToApp = function(userData) {
       if(!userData) return;
       if (typeof userData === 'string') userData = JSON.parse(userData);
       console.log("Proceeding to App for user:", userData.email, "Role:", userData.role);
       
-      const safeHide = (id) => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); };
-      const safeShow = (id) => { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); };
-
-      safeHide('screen-hello');
-      safeHide('screen-auth');
-      safeHide('modal-role');
-      safeHide('screen-profile');
+      window.safeHide('screen-hello');
+      window.safeHide('screen-auth');
+      window.safeHide('screen-role-select');
+      window.safeHide('screen-profile');
 
       const extraRow = document.getElementById('row-district-extra');
       const pHeader = document.querySelector('#screen-profile h2');
@@ -1112,11 +1113,9 @@
       if (userData.role === 'labour') {
          if(extraRow) extraRow.style.display = 'block';
          if(pHeader) pHeader.textContent = 'Worker Profile Setup';
-         console.log("Labour profile mode activated.");
       } else {
          if(extraRow) extraRow.style.display = 'none';
          if(pHeader) pHeader.textContent = 'Contractor Profile Setup';
-         console.log("Contractor profile mode activated.");
       }
 
       // FORCE PROFILE COMPLETION IF LABOUR IS MISSING DISTRICT EXTRA (Multi-district filtering requirement)
@@ -1124,7 +1123,7 @@
       
       if (!userData.profileCompleted || isLabourMissingExtra) {
         console.log("Showing tailored profile setup screen for role:", userData.role);
-        safeShow('screen-profile');
+        window.safeShow('screen-profile');
         const nameP = document.getElementById('p-name');
         if(nameP) nameP.value = userData.name || '';
       } else {
@@ -1582,12 +1581,9 @@
       if(!user) return;
       console.log("Auth Success for:", user.email);
 
-      const safeHide = (id) => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); };
-      const safeShow = (id) => { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); };
-
       // Immediately hide welcome elements to avoid "coming back" feel
-      safeHide('screen-hello');
-      safeHide('screen-auth');
+      window.safeHide('screen-hello');
+      window.safeHide('screen-auth');
 
       let existingProfile = null;
       try {
@@ -1612,7 +1608,7 @@
         localStorage.setItem('tnpvc_user', JSON.stringify(u));
         
         // Show role selection screen (New UI Replacement)
-        safeShow('screen-role-select');
+        window.safeShow('screen-role-select');
       }
     };
 
