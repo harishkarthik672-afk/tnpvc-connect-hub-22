@@ -602,10 +602,21 @@
   const tnpvc_u = JSON.parse(localStorage.getItem('tnpvc_user'));
   if(!tnpvc_u) window.location.replace('index.html');
 
-  // Firebase Init
+  // Firebase Safety Init
   const firebaseConfig = { apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU", authDomain: "tnpvc-project.firebaseapp.com", projectId: "tnpvc-project", storageBucket: "tnpvc-project.firebasestorage.app", messagingSenderId: "919957830993", appId: "1:919957830993:web:e1a2036a4258f683826770" };
-  firebase.initializeApp(firebaseConfig);
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
   const db = firebase.firestore();
+  const auth = firebase.auth();
+
+  // Watch Auth State to catch session drops
+  auth.onAuthStateChanged(user => {
+    if (!user && !localStorage.getItem('tnpvc_user')) {
+      console.warn("No active session. Returning to login.");
+      window.location.replace('index.html');
+    }
+  });
 
   // Populate UI
   document.getElementById('hdr-name').textContent = tnpvc_u.name.split(' ')[0];

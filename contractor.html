@@ -695,7 +695,7 @@
     const u = JSON.parse(localStorage.getItem('tnpvc_user')) || { name: 'Contractor', subExp: new Date().toISOString() };
     let isSubscribed = true;
 
-    // Firebase Config (Synchronized to tnpvc-project)
+    // Firebase Safety Config (Synchronized to tnpvc-project)
     const firebaseConfig = {
       apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU",
       authDomain: "tnpvc-project.firebaseapp.com",
@@ -704,8 +704,19 @@
       messagingSenderId: "919957830993",
       appId: "1:919957830993:web:e1a2036a4258f683826770"
     };
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // Session Verification
+    auth.onAuthStateChanged(user => {
+      if (!user && !localStorage.getItem('tnpvc_user')) {
+        console.warn("No active session found. Redirecting to login.");
+        window.location.replace('index.html');
+      }
+    });
 
     const localUID = localStorage.getItem('tnpvc_guest_uid') || "GUEST-" + Date.now();
     localStorage.setItem('tnpvc_guest_uid', localUID);

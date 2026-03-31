@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/labour", "destination": "/labour.html" },
+    { "source": "/contractor", "destination": "/contractor.html" },
+    { "source": "/index", "destination": "/index.html" }
+  ]
+}

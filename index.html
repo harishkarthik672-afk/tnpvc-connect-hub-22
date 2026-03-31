@@ -1128,11 +1128,13 @@
 
     function handleModalContinue() {
       const loadingBtn = document.getElementById('btn-modal-continue');
-      loadingBtn.textContent = 'Please wait...';
-      loadingBtn.disabled = true;
+      if (loadingBtn) {
+        loadingBtn.textContent = 'Please wait...';
+        loadingBtn.disabled = true;
+      }
 
       if (typeof window.firebaseProcessModal === 'function') {
-        window.firebaseProcessModal();
+        window.firebaseProcessModal(loadingBtn);
       } else {
         // Module failed to load completely
         window.executeAuthFallback('Firebase failed to load. Bypassing to preview the Dashboard.');
@@ -1142,7 +1144,7 @@
 
   <script>
     // --- AUTH ACTIONS ---
-    window.firebaseProcessModal = async () => {
+    window.firebaseProcessModal = async (loadingBtn) => {
       try {
         const role = window.selectedRole;
         const method = window.authMethod;
@@ -1152,9 +1154,9 @@
           await res.user.updateProfile({ displayName: window.manualCreds.name });
           
           const u = {
-            name: window.manualCreds.name,
+            name: window.manualCreds.name || 'TNPVC User',
             email: window.manualCreds.email,
-            role: role,
+            role: role || 'contractor',
             profileCompleted: false
           };
           localStorage.setItem('tnpvc_user', JSON.stringify(u));
@@ -1165,9 +1167,9 @@
           const user = result.user;
           
           const u = {
-            name: user.displayName,
+            name: user.displayName || 'TNPVC User',
             email: user.email,
-            role: role,
+            role: role || 'contractor',
             profileCompleted: false
           };
           localStorage.setItem('tnpvc_user', JSON.stringify(u));
@@ -1175,9 +1177,24 @@
         }
       } catch (error) {
         console.error("Auth Error", error);
-        alert("Authentication Failed: " + error.message + "\n\nTip: Social Login only works on a Web Server (http/https). It will not work if you open the HTML file directly (file:///).");
-        loadingBtn.textContent = 'Continue';
-        loadingBtn.disabled = false;
+        
+        let errorMsg = error.message;
+        if (error.code === 'auth/unauthorized-domain') {
+          errorMsg = "Unauthorized Domain! Please add your Vercel URL to the 'Authorized Domains' list in Firebase Console (Authentication > Settings).";
+        }
+        
+        alert("Authentication Failed: " + errorMsg + "\n\nTip: Social Login only works on a Web Server (http/https). It will not work if you open the HTML file directly (file:///).");
+        
+        if (loadingBtn) {
+          loadingBtn.textContent = 'Continue';
+          loadingBtn.disabled = false;
+        }
+
+        // Trigger fallback if it's a domain error during production testing
+        if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/popup-blocked') {
+           console.warn("Auth failed, activating fallback for testing purposes...");
+           window.executeAuthFallback('Auth Error: ' + error.message);
+        }
       }
     };
 
