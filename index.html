@@ -1340,10 +1340,21 @@
     window.handleGoogleImmediate = async () => {
       window.authMethod = 'google';
       localStorage.setItem('tnpvc_auth_method', 'google');
+
       try {
-        await auth.signInWithRedirect(googleProvider);
+        // USE POPUP FOR INSTANT RESPONSE AND TO AVOID REDIRECT LOOPS
+        const result = await auth.signInWithPopup(googleProvider);
+        if (result && result.user) {
+          console.log("Popup Login Success:", result.user.email);
+          window.handleAuthSuccess(result.user);
+        }
       } catch(e) {
-        alert("Google Login Init Failed: " + e.message);
+        console.error("Popup Error, trying redirect as fallback...", e);
+        try {
+          await auth.signInWithRedirect(googleProvider);
+        } catch(re) {
+          alert("Login Init Failed: " + re.message);
+        }
       }
     };
 
@@ -1558,9 +1569,25 @@
 
     auth.onAuthStateChanged(async (user) => {
       if (user) {
+        console.log("Firebase User detected:", user.email);
         const uStr = localStorage.getItem('tnpvc_user');
-        if (!uStr) {
+        
+        // If no session OR session doesn't have a role, we must handle it
+        if (!uStr || !JSON.parse(uStr).role) {
            window.handleAuthSuccess(user);
+        } else {
+           // Basic session sync (Hide welcome screens just in case they are still visible)
+           const u = JSON.parse(uStr);
+           if (u.role) {
+              const safeHide = (id) => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); };
+              safeHide('screen-hello');
+              safeHide('screen-auth');
+              
+              if(!u.profileCompleted) {
+                const safeShow = (id) => { const el = document.getElementById(id); if(el) el.classList.remove('hidden'); };
+                safeShow('screen-profile');
+              }
+           }
         }
       }
     });
