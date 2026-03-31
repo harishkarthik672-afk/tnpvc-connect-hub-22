@@ -1451,41 +1451,13 @@
 
     // Catch Redirect Result on Load
     window.addEventListener('load', async () => {
-      // Hide login logic IF we already have a logged-in user in localStorage and they are fully completed
       const uStr = localStorage.getItem('tnpvc_user');
-      if (uStr) {
-        const userData = JSON.parse(uStr);
-        if (userData.profileCompleted && userData.role) {
-           console.log("Auto-recovery: Logged in as " + userData.role);
-           // window.proceedToApp(userData); // Already handled in checkSession above?
-           // Actually, checkSession runs faster and earlier, so this is just safety.
-        }
-      }
-
       try {
         const result = await auth.getRedirectResult();
         if (result && result.user) {
-          // If a user just logged in via Google, check if they exist in Firestore
-          let existingProfile = null;
-          try {
-             // Query by email
-             const q = await db.collection('users').where('email', '==', result.user.email).limit(1).get();
-             if (!q.empty) {
-                existingProfile = q.docs[0].data();
-             }
-          } catch(e) { console.warn("Firestore check failed on redirect", e); }
-
-          if (existingProfile && existingProfile.role && existingProfile.profileCompleted) {
-             // USER ALREADY EXISTS - GO STRAIGHT TO APP
-             localStorage.setItem('tnpvc_user', JSON.stringify(existingProfile));
-             window.proceedToApp(existingProfile);
-          } else {
-             // NEW USER - ASK FOR ROLE
-             window.pendingUser = result.user;
-             document.getElementById('modal-role').classList.remove('hidden');
-          }
+          window.checkSessionAndRecover(result.user);
         } else {
-          // No redirect result, check session again for UI stability
+          // If no redirect result but session exists in storage, UI sync only
           if (uStr) {
             const userData = JSON.parse(uStr);
             const extraDist = document.getElementById('row-district-extra');
@@ -1494,33 +1466,46 @@
         }
       } catch (error) {
         console.error("Redirect Auth Error", error);
-        
-        let errorMsg = error.message;
-        if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/operation-not-allowed') {
-          console.warn("Domain Error/Auth not active. Using Fallback for testing.");
-          // Trigger Fallback so the user is NOT stuck
-          window.executeAuthFallback('Auth Error: ' + error.message);
-        } else {
-          alert("Login Error: " + errorMsg);
-        }
+        window.executeAuthFallback('Redirect Error');
       }
     });
 
+    window.checkSessionAndRecover = async (user) => {
+      if (!user) return;
+      console.log("Checking session for:", user.email);
+      
+      const uStr = localStorage.getItem('tnpvc_user');
+      let existingProfile = null;
+      
+      try {
+         const q = await db.collection('users').where('email', '==', user.email).limit(1).get();
+         if (!q.empty) {
+            existingProfile = q.docs[0].data();
+         }
+      } catch(e) { console.warn("Firestore check failed", e); }
+
+      if (existingProfile && existingProfile.role && existingProfile.profileCompleted) {
+         localStorage.setItem('tnpvc_user', JSON.stringify(existingProfile));
+         window.proceedToApp(existingProfile);
+      } else {
+         // NEW USER or INCOMPLETE - Show Role Modal if no role yet
+         const storedUser = uStr ? JSON.parse(uStr) : {};
+         if (!storedUser.role) {
+            window.pendingUser = user;
+            const modal = document.getElementById('modal-role');
+            if(modal) modal.classList.remove('hidden');
+         } else {
+            // Already has a role in local storage but profile incomplete
+            window.proceedToApp(storedUser);
+         }
+      }
+    };
+
     auth.onAuthStateChanged(async (user) => {
       if (user) {
-        // Double check if we need to recover profile from Firestore in background
         const uStr = localStorage.getItem('tnpvc_user');
         if (!uStr) {
-          try {
-             const q = await db.collection('users').where('email', '==', user.email).limit(1).get();
-             if (!q.empty) {
-                const existingProfile = q.docs[0].data();
-                if (existingProfile.profileCompleted) {
-                   localStorage.setItem('tnpvc_user', JSON.stringify(existingProfile));
-                   window.proceedToApp(existingProfile);
-                }
-             }
-          } catch(e) { console.error("Background auth recovery failed", e); }
+          window.checkSessionAndRecover(user);
         }
       }
     });
