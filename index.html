@@ -1385,25 +1385,69 @@
     };
 
     window.handleGoogleImmediate = async () => {
+      // ── Check 1: File protocol won't work with Firebase Auth ──
+      if(window.location.protocol === 'file:') {
+        alert("⚠️ Google Login doesn't work when opening the file directly.\n\nPlease open this app via:\n• Your Vercel URL (tnpvc-connect-hub-22.vercel.app)\n• OR a local server (like VS Code Live Server)\n\nYou can still use Email/Password login below.");
+        return;
+      }
+
+      const btn = document.getElementById('btn-google-login');
+      const originalHTML = btn ? btn.innerHTML : '';
+      if(btn) {
+        btn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" style="animation:spin 0.8s linear infinite"><circle cx="12" cy="12" r="10" stroke="#6A1FC2" stroke-width="3" fill="none" stroke-dasharray="30 70"/></svg><span>Signing in...</span>`;
+        btn.style.pointerEvents = 'none';
+      }
+
       window.authMethod = 'google';
-      localStorage.setItem('tnpvc_auth_method', 'google');
 
       try {
-        // USE POPUP FOR INSTANT RESPONSE AND TO AVOID REDIRECT LOOPS
+        // ── Attempt 1: Popup ──
         const result = await auth.signInWithPopup(googleProvider);
-        if (result && result.user) {
-          console.log("Popup Login Success:", result.user.email);
+        if(result && result.user) {
+          console.log("✅ Google Popup Success:", result.user.email);
           window.handleAuthSuccess(result.user);
+          return;
         }
-      } catch(e) {
-        console.error("Popup Error, trying redirect as fallback...", e);
-        try {
-          await auth.signInWithRedirect(googleProvider);
-        } catch(re) {
-          alert("Login Init Failed: " + re.message);
+      } catch(popupErr) {
+        console.warn("Popup failed:", popupErr.code, popupErr.message);
+
+        // Restore button
+        if(btn) { btn.innerHTML = originalHTML; btn.style.pointerEvents = ''; }
+
+        if(popupErr.code === 'auth/popup-blocked') {
+          // ── Attempt 2: Redirect as fallback for popup-blocked ──
+          const go = confirm("🔔 Popup was blocked by your browser.\n\nClick OK to use Redirect Login instead (page will reload).\nClick Cancel to use Email/Password login.");
+          if(go) {
+            localStorage.setItem('tnpvc_pending_role', window.selectedRole || 'contractor');
+            try {
+              await auth.signInWithRedirect(googleProvider);
+            } catch(redirErr) {
+              alert("❌ Redirect also failed: " + redirErr.message);
+            }
+          }
+          return;
         }
+
+        if(popupErr.code === 'auth/unauthorized-domain') {
+          alert("❌ Domain not authorized in Firebase.\n\nFix: Go to Firebase Console → Authentication → Settings → Authorized Domains → Add your Vercel URL.\n\nCurrent domain: " + window.location.hostname);
+          return;
+        }
+
+        if(popupErr.code === 'auth/cancelled-by-user' || popupErr.code === 'auth/popup-closed-by-user') {
+          // User closed popup — silently reset button
+          return;
+        }
+
+        // Any other error — show it clearly
+        alert("❌ Google Login Failed:\n" + (popupErr.message || popupErr.code) + "\n\nTry Email/Password login as an alternative.");
       }
     };
+
+    // Add spinner CSS inline
+    const spinStyle = document.createElement('style');
+    spinStyle.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+    document.head.appendChild(spinStyle);
+
 
     window.handleModalContinue = function() {
       const loadingBtn = document.getElementById('btn-modal-continue');
