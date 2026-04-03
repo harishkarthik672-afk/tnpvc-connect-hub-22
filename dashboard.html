@@ -6,6 +6,7 @@
 <title>TNPVC Super Auth Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <style>
   :root {
@@ -60,13 +61,20 @@
   .badge.contractor { background: #E0E7FF; color: #4338CA; }
   .badge.labour { background: #FEF3C7; color: #B45309; }
 
-  @media (max-width: 600px) {
-    header { flex-direction: column; align-items: flex-start; gap: 15px; }
-    .stat-card .val { font-size: 24px; }
-  }
+
+  /* Toast Notification */
+  #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: #333; color: #fff; padding: 14px 28px; border-radius: 12px; font-weight: 800; font-size: 14px; z-index: 10000; transition: 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); opacity: 0; box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; }
+  #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* Debug Area */
+  #debug-console { position: fixed; top: 10px; right: 10px; background: #000; color: #10B981; padding: 10px; font-family: monospace; font-size: 10px; border-radius: 8px; max-width: 250px; z-index: 11000; display: none; opacity: 0.8; }
 </style>
 </head>
 <body>
+
+  <!-- TOAST SYSTEM -->
+  <div id="toast"></div>
+  <div id="debug-console"></div>
 
   <!-- LOGIN WALL -->
   <div id="login-wall">
@@ -221,9 +229,12 @@
   window.allUsers = [];
 
   async function loadLiveStats() {
-    // 1. Get Jobs
-    const jobsSnap = await db.collection('jobs').get();
-    document.getElementById('count-jobs').textContent = jobsSnap.size;
+    // 1. Get Jobs (skip if element doesn't exist)
+    try {
+      const jobsSnap = await db.collection('jobs').get();
+      const el = document.getElementById('count-jobs');
+      if(el) el.textContent = jobsSnap.size;
+    } catch(e) { logDebug('Jobs fetch: ' + e.message); }
 
     // 2. Get Real User Data
     const usersSnap = await db.collection('users').get();
@@ -284,43 +295,133 @@
     renderUserDirectory(filtered);
   }
 
+  function showToast(m) { 
+    const t = document.getElementById('toast'); 
+    t.textContent = m; 
+    t.classList.add('show'); 
+    setTimeout(() => t.classList.remove('show'), 3000); 
+  }
+
+  function logDebug(msg) {
+    const console = document.getElementById('debug-console');
+    console.style.display = 'block';
+    console.innerHTML = `[DEBUG]: ${msg}<br>${console.innerHTML}`;
+  }
+
   async function updateAppContent(type) {
     const btn = document.querySelector(`button[onclick*='updateAppContent("${type}")']`);
     if(btn) { btn.textContent = 'Uploading...'; btn.disabled = true; }
+    logDebug('Starting Push for ' + type);
 
     try {
       const fileId = type === 'promo' ? 'promo-file' : 'service-file';
-      const file = document.getElementById(fileId).files[0];
+      const fileInp = document.getElementById(fileId);
+      if(!fileInp) throw new Error('Input ' + fileId + ' not found');
+      
+      const file = fileInp.files[0];
       const title = type === 'promo' ? document.getElementById('promo-title').value : '';
 
-      if(!file) throw new Error('Specify an image to upload');
-      if(file.size > 1048576) throw new Error('Image too large! Use images under 1MB for Firebase Cloud.');
+      if(!file) throw new Error('Please select an image first.');
+      logDebug('File: ' + file.name + ' (' + (file.size/1024).toFixed(0) + 'KB)');
 
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64 = e.target.result;
-        
+      // STEP 1: Aggressive compression - max 400px, quality 0.5
+      logDebug('Compressing...');
+      let base64 = await compressImage(file, 400, 0.5);
+      logDebug('After pass1: ' + (base64.length/1024).toFixed(1) + 'KB');
+
+      // STEP 2: If still > 500KB, compress more
+      if(base64.length > 512000) {
+        logDebug('Still large, pass 2...');
+        base64 = await compressBase64Further(base64, 300, 0.4);
+        logDebug('After pass2: ' + (base64.length/1024).toFixed(1) + 'KB');
+      }
+
+      // STEP 3: Final size gate - Firestore doc limit is 1MB
+      if(base64.length > 900000) {
+        throw new Error('Image too large even after compression. Use a smaller image.');
+      }
+
+      logDebug('Size OK. Pushing to Firestore...');
+
+      // STEP 4: Write with timeout protection (15 seconds)
+      const writePromise = (async () => {
         if(type === 'promo') {
-           await db.collection('promotions').add({
-             imageUrl: base64,
-             title: title || 'New Offer',
-             createdAt: new Date().toISOString()
-           });
-           alert('Promotion Live! Status: Multi-Platform Sync OK');
+          await db.collection('app_config').doc('promo').set({
+            imageUrl: base64,
+            title: title || 'New Special Offer!',
+            updatedAt: new Date().toISOString()
+          });
+          // Also add to promotions carousel
+          await db.collection('promotions').add({
+            imageUrl: base64,
+            title: title || 'New Offer',
+            createdAt: new Date().toISOString()
+          });
         } else {
-           await db.collection('app_config').doc(type).set({
-             imageUrl: base64, title: 'Service Icon', updatedAt: new Date().toISOString()
-           });
-           alert('Global Asset Updated.');
+          await db.collection('app_config').doc(type).set({
+            imageUrl: base64, title: 'Service Icon', updatedAt: new Date().toISOString()
+          });
         }
+      })();
 
-        if(btn) { btn.textContent = 'Success ✅'; setTimeout(() => { btn.textContent = 'Publish to Cloud 🚀'; btn.disabled = false; }, 2000); }
-      };
-      reader.readAsDataURL(file);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Server timeout. Check your internet and retry.')), 15000)
+      );
+
+      await Promise.race([writePromise, timeoutPromise]);
+
+      logDebug('Push SUCCESS!');
+      showToast(type === 'promo' ? '🚀 Promo live! All users notified.' : '✅ Asset updated!');
+      if(btn) { btn.textContent = '✅ Done!'; setTimeout(() => { btn.textContent = 'Push to All Users 🚀'; btn.disabled = false; }, 2500); }
+
     } catch(err) {
-      alert(err.message);
-      if(btn) { btn.textContent = 'Retry ❌'; btn.disabled = false; }
+      logDebug('ERROR: ' + (err.code || '') + ' ' + err.message);
+      showToast('❌ ' + err.message);
+      if(btn) { btn.textContent = 'Retry 🔄'; btn.disabled = false; }
     }
+  }
+
+  // Second pass compression from base64
+  function compressBase64Further(base64Str, maxWidth, quality) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = base64Str;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if(w > maxWidth) { h = Math.round((h * maxWidth) / w); w = maxWidth; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+    });
+  }
+
+  // Image Compressor (Client Side)
+  function compressImage(file, maxWidth, quality) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onerror = error => reject(error);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width, height = img.height;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = (e) => reject(new Error('Image load failed'));
+      };
+    });
   }
 </script>
 </body>

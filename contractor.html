@@ -25,6 +25,8 @@
       --warning-light: #FEF3C7;
     }
 
+    #debug-console { position: fixed; top: 10px; right: 10px; background: #000; color: #10B981; padding: 10px; font-family: monospace; font-size: 10px; border-radius: 8px; max-width: 250px; z-index: 11000; display: none; opacity: 0.8; pointer-events: none; }
+
     /* Basic Resets */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text-dark); -webkit-tap-highlight-color: transparent; }
@@ -51,7 +53,7 @@
     /* Ads Slider Modern (New Opportunities) */
     .ad-slider { display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x mandatory; padding: 10px 16px 20px; scrollbar-width: none; background: transparent; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
     .ad-slider::-webkit-scrollbar { display: none; }
-    .ad-card { flex: 0 0 calc(100% - 32px); margin-right: 16px; flex-shrink: 0; scroll-snap-align: center; border-radius: 24px; padding: 24px; position: relative; overflow: hidden; height: 180px; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; box-shadow: 0 8px 25px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.12); transition: transform 0.2s ease; background-size: cover; background-position: center; touch-action: pan-y; }
+    .ad-card { flex: 0 0 calc(100% - 32px); margin-right: 16px; flex-shrink: 0; scroll-snap-align: center; border-radius: 24px; padding: 24px; position: relative; overflow: hidden; height: 180px; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; box-shadow: 0 8px 25px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.12); transition: transform 0.2s ease; background-size: cover; background-position: center; touch-action: auto; }
     .ad-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%); z-index: 1; }
     .ad-card.no-text::before { display: none; }
     .ad-card:active { transform: scale(0.98); }
@@ -246,7 +248,7 @@
         <div class="home-promo-strip">
         <!-- Hero Promo Carousel -->
         <div class="hp-card" style="flex: 0 0 100%; height: auto; padding: 0; border: none; min-height: auto; box-shadow: none; overflow: visible;">
-          <img src="ero_banner.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
+          <img id="hero-promo-banner" src="ero_banner.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
         </div>
         <div class="hp-card" style="flex: 0 0 100%; height: auto; padding: 0; border: none; min-height: auto; box-shadow: none; overflow: visible;">
           <img src="aaaa.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
@@ -690,20 +692,21 @@
       <p style="font-size:13px; color:var(--text-muted); font-weight:600; line-height:1.5;">Your requirement has been sent to workers in your district.</p>
     </div>
   </div>
+  <div id="toast"></div>
+  <div id="debug-console"></div>
 
   <script>
     const u = JSON.parse(localStorage.getItem('tnpvc_user')) || { name: 'Contractor', subExp: new Date().toISOString() };
     let isSubscribed = true;
 
     // Firebase Safety Config (Synchronized to tnpvc-project)
-    const firebaseConfig = {
-      apiKey: "AIzaSyCMf099O5GYoumvMZGIYOKwJU96K9Djh8A",
-      authDomain: "tnpvc-project.firebaseapp.com",
-      projectId: "tnpvc-project",
-      storageBucket: "tnpvc-project.firebasestorage.app",
-      messagingSenderId: "568663363697",
-      appId: "1:568663363697:web:a75cb28bd69d97b19f8bd0",
-      measurementId: "G-VNBJJXMLR6"
+    const firebaseConfig = { 
+      apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU", 
+      authDomain: "tnpvc-connect-hub.firebaseapp.com", 
+      projectId: "tnpvc-connect-hub", 
+      storageBucket: "tnpvc-connect-hub.firebasestorage.app", 
+      messagingSenderId: "919957830993", 
+      appId: "1:919957830993:web:e1a2036a4258f683826770"
     };
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
@@ -722,31 +725,14 @@
     const localUID = localStorage.getItem('tnpvc_guest_uid') || "GUEST-" + Date.now();
     localStorage.setItem('tnpvc_guest_uid', localUID);
 
-    let jobsListenerActive = false;
-    function startJobsListener(uid) {
-      if(jobsListenerActive) return;
-      jobsListenerActive = true;
-      db.collection("jobs")
-        .where("contractorId", "==", uid)
-        .onSnapshot((snapshot) => {
-          const jobs = [];
-          snapshot.forEach((doc) => jobs.push({ id: doc.id, ...doc.data() }));
-          window.myJobs = jobs.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0));
-          renderDashboard();
-          if(document.getElementById('tab-bookings').classList.contains('active')) renderMyJobs();
-        });
+    function logDebug(msg) {
+      const console = document.getElementById('debug-console');
+      if(!console) return;
+      console.style.display = 'block';
+      console.innerHTML = `[DEBUG]: ${msg}<br>${console.innerHTML}`;
     }
 
-    // REAL-TIME JOBS LISTENER (Global Sync & Powerful Fetch)
-    firebase.auth().onIdTokenChanged(user => {
-      if (user) {
-        startJobsListener(user.uid);
-      } else {
-        startJobsListener(localUID);
-      }
-    });
-
-    function getJobs() { return window.myJobs || []; }
+    function getJobs() { return window.contractor_jobs || []; }
 
     function switchNav(el, tabId) {
       document.querySelectorAll('.b-nav-item').forEach(i => i.classList.remove('active'));
@@ -827,18 +813,36 @@
     db.collection('app_config').doc('promo').onSnapshot(doc => {
       if(doc.exists) {
         const data = doc.data();
+        const hero = document.getElementById('hero-promo-banner');
+        if(hero && data.imageUrl) hero.src = data.imageUrl;
+        // Target any registration variant banners too
         const bannerImg = document.querySelector('.reg-banner img');
         if(bannerImg && data.imageUrl) bannerImg.src = data.imageUrl;
-        const bannerTxt = document.querySelector('.reg-banner h1, .reg-banner h2, .reg-banner h3');
-        if(bannerTxt && data.title) bannerTxt.textContent = data.title;
       }
     });
 
-    // High-Power Real-time Sync (Contractor)
-    db.collection('jobs').where('postedBy', '==', u.phone || u.email).onSnapshot(snap => {
-      window.contractor_jobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
-      renderDashboard();
-      if(document.getElementById('tab-bookings').classList.contains('active')) renderMyJobs();
+    // Real-time Sync (Enhanced with explicit UID check)
+    auth.onAuthStateChanged(user => {
+      const targetUID = user ? user.uid : localUID;
+      logDebug('Session: ' + (user ? 'Auth' : 'Guest'));
+      
+      db.collection('jobs').where('contractorId', '==', targetUID).onSnapshot(snap => {
+        logDebug('My Posts: ' + snap.docs.length);
+        window.contractor_jobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+        renderDashboard();
+        if(document.getElementById('tab-bookings').classList.contains('active')) renderMyJobs();
+      }, err => {
+        logDebug('Jobs Error: ' + err.code);
+      });
+      
+      if(!user && u.phone) {
+        db.collection('jobs').where('postedBy', '==', u.phone).onSnapshot(snap => {
+           // Merge if guest using same phone
+           const guestJobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+           window.contractor_jobs = [...(window.contractor_jobs || []), ...guestJobs];
+           renderDashboard();
+        });
+      }
     });
 
     function getJobs() { return window.contractor_jobs || []; }
@@ -963,30 +967,56 @@
 
       const list = document.getElementById('bookings-list');
       if(jobs.length === 0) { 
-        list.innerHTML = `<div style="text-align:center; padding:40px 20px; margin: 20px 0; background: #fff; border-radius: 24px; border: 1.5px dashed var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.02);"><div style="font-size:40px; margin-bottom:12px;">📋</div><p style="color:var(--text-muted); font-weight:700;">No jobs found in this category.</p>
-        ${windowCategoryFilter ? `<button onclick="filterMyPosts(null)" style="margin-top:16px; padding:10px 24px; border-radius:100px; background:#F8FAFC; border:1.5px solid var(--border); font-weight:700; color:var(--text-dark); cursor:pointer;">Clear Filter</button>` : ''}
+        list.innerHTML = `<div style="text-align:center; padding:40px 20px; margin:20px 0; background:#fff; border-radius:24px; border:1.5px dashed var(--border);"><div style="font-size:40px; margin-bottom:12px;">📋</div><p style="color:var(--text-muted); font-weight:700;">No jobs found.</p>
+        ${windowCategoryFilter ? `<button onclick="filterMyPosts(null)" style="margin-top:16px; padding:10px 24px; border-radius:100px; background:#F8FAFC; border:1.5px solid var(--border); font-weight:700; cursor:pointer;">Clear Filter</button>` : ''}
         </div>`; 
         return; 
       }
-      
+
       list.innerHTML = `
         ${windowCategoryFilter ? `<div style="text-align:right; margin-bottom:16px;"><span onclick="filterMyPosts(null)" style="font-size:12px; font-weight:700; color:#DC2626; cursor:pointer; background:#FEE2E2; padding:6px 12px; border-radius:100px;">Clear Filter ✕</span></div>` : ''}
-        ${jobs.map(j => `
-        <div class="booking-card">
-          ${j.image ? `<img src="${j.image}" style="width:100%; height:160px; object-fit:cover;">` : ''}
-          <div style="padding:20px;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-              <div class="bc-title">${j.title}</div>
-              <div class="bc-status-pill" style="background:#EAE8FF; color:#9086FF;">${j.status}</div>
+        ${jobs.map(j => {
+          const isComplete = j.status === 'Completed';
+          const hasProof = isComplete && j.completionImage;
+          const statusColor = isComplete ? '#059669' : '#6A1FC2';
+          const statusBg = isComplete ? '#ECFDF5' : '#EDE9FE';
+          return `
+          <div class="booking-card" style="margin-bottom:16px; border:1.5px solid ${isComplete ? '#D1FAE5' : 'var(--border)'};">
+            ${hasProof ? `
+            <!-- Completion photo from Labour -->
+            <div style="position:relative;">
+              <img src="${j.completionImage}" style="width:100%; height:170px; object-fit:cover; display:block;">
+              <div style="position:absolute; top:10px; left:10px; background:rgba(5,150,105,0.9); backdrop-filter:blur(4px); color:#fff; font-size:10px; font-weight:800; padding:5px 12px; border-radius:100px;">📸 Work Proof by Labour</div>
+            </div>` : j.image ? `<img src="${j.image}" style="width:100%; height:150px; object-fit:cover; display:block;">` : ''}
+
+            <div style="padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                <div style="font-size:15px; font-weight:800; color:var(--text-dark); flex:1; padding-right:8px;">${j.title}</div>
+                <div style="background:${statusBg}; color:${statusColor}; font-size:10px; font-weight:800; padding:5px 12px; border-radius:100px; white-space:nowrap;">${isComplete ? '✓ Completed' : 'Active'}</div>
+              </div>
+
+              ${j.category ? `<div style="font-size:10px; font-weight:800; background:var(--primary-light); color:var(--primary); display:inline-block; padding:4px 8px; border-radius:8px; margin-bottom:8px;">${j.category}</div>` : ''}
+
+              <p style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">📍 ${j.area}, ${j.district} | ${j.sqft} sqft</p>
+              <p style="font-size:14px; font-weight:800; color:var(--primary); margin-bottom:${isComplete ? 12 : 16}px;">Budget: ₹${j.budget}</p>
+
+              ${isComplete ? `
+              <!-- Who completed it -->
+              <div style="background:${hasProof ? '#F0FDF4' : '#F8FAFC'}; border-radius:16px; padding:14px; margin-bottom:12px; display:flex; align-items:center; gap:12px;">
+                <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(j.completedBy||'L')}&background=059669&color=fff&bold=true" style="width:40px; height:40px; border-radius:12px; flex-shrink:0;">
+                <div>
+                  <div style="font-size:12px; font-weight:800; color:${hasProof ? '#059669' : 'var(--text-muted)'};">✓ Completed by ${j.completedBy || 'Labour'}</div>
+                  ${j.completedAt ? `<div style="font-size:10px; color:#828F9E; margin-top:2px;">${new Date(j.completedAt).toLocaleString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>` : ''}
+                  ${j.completedByPhone ? `<a href="https://wa.me/${j.completedByPhone.length===10?'91'+j.completedByPhone:j.completedByPhone}?text=Hi, I got your work completion update on TNPVC." target="_blank" style="font-size:10px; color:#25D366; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; gap:3px; margin-top:4px;">💬 Chat with Labour →</a>` : ''}
+                </div>
+              </div>` : ''}
+
+              ${!isComplete ? `<button onclick="closeJob('${j.id}')" style="width:100%; padding:14px; border:none; background:linear-gradient(135deg,#059669,#10B981); color:#fff; border-radius:16px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 6px 15px rgba(5,150,105,0.25);">✓ Mark as Work Completed</button>` : ''}
             </div>
-            ${j.category ? `<div style="font-size:10px; font-weight:800; background:var(--primary-light); color:var(--primary); display:inline-block; padding:4px 8px; border-radius:8px; margin-top:8px;">${j.category}</div>` : ''}
-            <p style="font-size:12px; color:var(--text-muted); margin-top:5px;">📍 ${j.area}, ${j.district} | ${j.sqft} sqft</p>
-            <p style="font-size:15px; font-weight:800; color:var(--primary); margin-top:10px;">Platform Fee: ₹${j.budget}</p>
-            ${j.status === 'Active' ? `<button onclick="closeJob('${j.id}')" style="margin-top:16px; width:100%; padding:14px; border:none; background:#059669; color:#fff; border-radius:16px; font-weight:800; cursor:pointer;">✓ Mark as Work Completed</button>` : ''}
-          </div>
-        </div>
-      `).join('')}`;
+          </div>`;
+        }).join('')}`;
     }
+
 
     function closeJob(id) {
        if(!confirm("Confirm work completion?")) return;
@@ -1022,17 +1052,22 @@
         let sqft = document.getElementById('post-sqft').value;
         let desc = document.getElementById('post-desc').value;
 
+        if(!district) {
+           alert("Please select a District for the work location!");
+           isPostingActive = false;
+           if(submitBtn) { submitBtn.style.opacity = '1'; submitBtn.textContent = 'Post Requirement Now (Free)'; }
+           return;
+        }
+
         // Smart Auto-Fallbacks to guarantee post success even if fields are missed
         if(!category) category = "General Work";
         if(!title) title = category;
-        if(!district) district = u.district || "Chennai";
-        if(!area) area = "City Center";
-        if(!phone) phone = "9876543210";
+        if(!area) area = district; // Fallback to district name if specific area missing
+        if(!phone) phone = u.phone || "9876543210";
         if(!sqft) sqft = "100";
-        if(!desc) desc = "Seeking skilled professional for " + title;
-
-        const user = firebase.auth().currentUser;
+                const user = firebase.auth().currentUser;
         const uid = user ? user.uid : localUID;
+        logDebug('Preparing payload for UID: ' + uid);
 
         const jobId = "JOB-" + Date.now();
         
@@ -1050,13 +1085,20 @@
           status: 'Active', 
           contractor: u.name || "Guest Contractor", 
           contractorId: uid,
+          postedBy: u.phone || u.email || "guest",
           date: new Date().toISOString(),
           createdAt: Date.now(),
           featured: !!document.getElementById('post-feat').checked
         };
 
-        // Firebase Persistence (Async Await for true confirmation)
-        await db.collection("jobs").doc(jobId).set(payload);
+        logDebug('Pushing to Firestore: ' + jobId);
+        
+        // Firebase Persistence with Timeout Logic
+        const postPromise = db.collection("jobs").doc(jobId).set(payload);
+        const timeoutPromise = new Promise((_, rej) => setTimeout(() => rej(new Error('Push Timeout')), 15000));
+        
+        await Promise.race([postPromise, timeoutPromise]);
+        logDebug('Firestore SUCCESS ✅');
         
         // Notify District Laborers asynchronously
         db.collection("district_alerts").add({
@@ -1064,28 +1106,27 @@
           title: "New Work in " + payload.area, 
           body: payload.title, 
           date: new Date().toISOString()
-        }).catch(e => console.log("Alert Error:", e));
+        }).catch(e => logDebug("Alert Error: " + e.message));
         
-        // Launch Hardware-Accelerated Success Animation
+        // Launch Success UI
         const popup = document.getElementById('success-popup');
         if(popup) popup.classList.add('show');
         
-        // Route & Cleanup
         setTimeout(() => {
           if(popup) popup.classList.remove('show');
-          document.getElementById('post-title').value = "";
-          document.getElementById('post-desc').value = "";
-          document.getElementById('post-sqft').value = "";
-          document.getElementById('post-area-name').value = "";
           if(typeof removeJobImage === "function") removeJobImage();
           switchNav(document.getElementById('nav-bookings'), 'tab-bookings');
-        }, 2000);
+        }, 2500);
 
       } catch (error) {
-        alert("CRITICAL SYSTEM ERROR:\n" + error.message);
+        logDebug('FATAL: ' + error.message);
+        alert("Upload Failed: " + error.message);
       } finally {
         isPostingActive = false;
-        if(submitBtn) { submitBtn.style.opacity = '1'; submitBtn.textContent = 'Post Requirement Now (Free)'; }
+        if(typeof submitBtn !== 'undefined' && submitBtn) { 
+          submitBtn.style.opacity = '1'; 
+          submitBtn.textContent = 'Post Requirement Now (Free)'; 
+        }
       }
     }
 
@@ -1203,21 +1244,33 @@
       const list = document.getElementById('full-notif-list');
       const n = window.activeNotifs || [];
       if(n.length === 0) {
-        list.innerHTML = `<div style="text-align:center; padding:40px 20px; margin: 24px; background:#fff; border-radius: 24px; border: 1.5px dashed var(--border);"><div style="font-size:44px; margin-bottom:12px;">🔔</div><p style="color:var(--text-muted); font-weight:700; font-size:14px;">Your activity feed is empty.</p></div>`;
+        list.innerHTML = `<div style="text-align:center; padding:40px 20px; margin:24px; background:#fff; border-radius:24px; border:1.5px dashed var(--border);"><div style="font-size:44px; margin-bottom:12px;">🔔</div><p style="color:var(--text-muted); font-weight:700; font-size:14px;">Your activity feed is empty.</p></div>`;
         return;
       }
-      list.innerHTML = n.map(x => `
-        <div class="notif-item" onclick="markRead('${x.id}')">
-          <div class="ni-icon">👷</div>
-          <div class="ni-content">
-            <div class="ni-title">${x.title}</div>
+      list.innerHTML = n.map(x => {
+        const isCompletion = x.type === 'completion';
+        const isBooking = x.type === 'booking';
+        const iconBg = isCompletion ? '#ECFDF5' : '#EDE9FE';
+        const iconColor = isCompletion ? '#059669' : '#6A1FC2';
+        const icon = isCompletion ? '🎉' : isBooking ? '📅' : '👷';
+        return `
+        <div class="notif-item" onclick="markRead('${x.id}')" style="border-color:${isCompletion ? '#D1FAE5' : 'var(--border)'};">
+          <div class="ni-icon" style="background:${iconBg}; color:${iconColor};">${icon}</div>
+          <div class="ni-content" style="flex:1;">
+            <div class="ni-title" style="color:${isCompletion ? '#059669' : 'var(--text-dark)'};">${x.title}</div>
             <div class="ni-body">${x.body}</div>
             <span class="ni-time">${new Date(x.date).toLocaleString()}</span>
+            ${isCompletion && x.completionImage ? `
+            <div style="margin-top:8px;">
+              <img src="${x.completionImage}" style="width:100%; max-height:120px; object-fit:cover; border-radius:12px; border:2px solid #D1FAE5;">
+              <div style="font-size:10px; font-weight:800; color:#059669; margin-top:4px;">📸 Work Proof Photo</div>
+            </div>` : ''}
           </div>
-          ${!x.read ? '<div style="width:10px; height:10px; background:var(--primary); border-radius:50%;"></div>' : ''}
-        </div>
-      `).join('');
+          ${!x.read ? `<div style="width:10px; height:10px; background:${isCompletion ? '#059669' : 'var(--primary)'}; border-radius:50%; flex-shrink:0;"></div>` : ''}
+        </div>`;
+      }).join('');
     }
+
 
     function markRead(id) {
        db.collection("notifications").doc(id).update({ read: true });
@@ -1253,11 +1306,14 @@
     calculateFee();
 
     // PROMOTIONS LISTENER (Cards)
-    db.collection('promotions').orderBy('createdAt', 'desc').onSnapshot(snap => {
+    db.collection('promotions').onSnapshot(snap => {
       const scroller = document.querySelector('.ad-slider');
       if(!scroller) return;
-      scroller.innerHTML = snap.docs.map(doc => {
-        const p = doc.data();
+
+      let docs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+      docs.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      scroller.innerHTML = docs.map(p => {
         return `<div class="ad-card" style="background-image: url('${p.imageUrl}')">
           <h3>${p.title}</h3>
           <p>Verified Partner Promotion</p>

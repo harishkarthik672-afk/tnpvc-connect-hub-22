@@ -65,7 +65,7 @@
   .section-hdr { font-size: 15px; font-weight: 800; margin: 0 16px 16px; display: flex; justify-content: space-between; align-items: center; }
   .promo-scroll { display: flex; gap: 0; overflow-x: auto; padding: 0 16px 20px; margin: 0; scrollbar-width: none; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
   .promo-scroll::-webkit-scrollbar { display: none; }
-  .p-card { flex: 0 0 calc(100% - 32px); margin-right: 16px; flex-shrink: 0; scroll-snap-align: center; border-radius: 24px; height: 180px; padding: 24px; position: relative; overflow: hidden; background-size: cover; background-position: center; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08); touch-action: pan-y; }
+  .p-card { flex: 0 0 calc(100% - 32px); margin-right: 16px; flex-shrink: 0; scroll-snap-align: center; border-radius: 24px; height: 180px; padding: 24px; position: relative; overflow: hidden; background-size: cover; background-position: center; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08); touch-action: auto; }
   .p-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent); z-index: 1; }
   .p-card.no-txt::before { display: none; }
   .p-card h4 { font-size: 18px; font-weight: 800; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
@@ -177,7 +177,7 @@
     <div class="home-promo-strip">
       <!-- AUTO CAROUSEL WRAPPER -->
       <div id="promo-carousel" class="hp-card" style="flex: 0 0 100%; height: auto; padding: 0; border: none; min-height: auto; box-shadow: none; overflow: visible;">
-        <img src="ero_banner.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
+        <img id="hero-promo-banner" src="ero_banner.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
       </div>
       <div class="hp-card" style="flex: 0 0 100%; height: auto; padding: 0; border: none; min-height: auto; box-shadow: none; overflow: visible;">
         <img src="aaaa.jpg" style="width: 100%; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: block;">
@@ -595,6 +595,104 @@
     </div>
   </div>
 
+
+  <!-- ===== JOB DETAIL PANEL (Bottom Sheet) ===== -->
+  <div id="detail-panel" style="position:fixed; inset:0; z-index:8000; pointer-events:none;">
+    <!-- Backdrop -->
+    <div id="dp-backdrop" onclick="closeDetail()" style="position:absolute; inset:0; background:rgba(15,23,42,0); transition:0.3s; pointer-events:none;"></div>
+    <!-- Sheet -->
+    <div id="dp-sheet" style="position:absolute; bottom:0; left:50%; transform:translateX(-50%) translateY(100%); width:100%; max-width:480px; background:#fff; border-radius:32px 32px 0 0; transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 -20px 60px rgba(0,0,0,0.15); overflow:hidden; max-height:88vh; overflow-y:auto;">
+      <!-- Drag Handle -->
+      <div style="width:40px; height:4px; background:#E2E8F0; border-radius:100px; margin:14px auto 0;"></div>
+
+      <!-- Job Cover Image -->
+      <div style="position:relative; margin:16px 20px 0;">
+        <img id="dt-img" src="" style="width:100%; height:180px; object-fit:cover; border-radius:20px; background:#F1F5F9; display:block;">
+        <!-- Category Badge -->
+        <div id="dt-cat-badge" style="position:absolute; top:12px; left:12px; background:rgba(106,31,194,0.85); backdrop-filter:blur(6px); color:#fff; font-size:10px; font-weight:800; padding:5px 12px; border-radius:100px; text-transform:uppercase; letter-spacing:0.5px;"></div>
+      </div>
+
+      <!-- Content -->
+      <div style="padding:20px 20px 0;">
+        <!-- Contractor Row with MONGO DP -->
+        <div style="display:flex; align-items:center; gap:12px; padding:14px; background:#F8FAFC; border-radius:18px; margin-bottom:16px; border:1.5px solid #EDF1F5;">
+          <img id="dt-contractor-dp" src="" style="width:48px; height:48px; border-radius:14px; object-fit:cover; background:#E2E8F0; flex-shrink:0;">
+          <div style="flex:1; min-width:0;">
+            <div id="dt-con" style="font-size:14px; font-weight:800; color:#16202A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Contractor</div>
+            <div style="font-size:11px; color:#828F9E; font-weight:600; margin-top:2px;">Verified Contractor</div>
+          </div>
+          <button id="dt-whatsapp-btn" onclick="openWhatsApp()" style="display:flex; align-items:center; gap:6px; padding:8px 14px; background:#25D366; border:none; border-radius:100px; color:#fff; font-size:12px; font-weight:800; cursor:pointer;">
+            <svg width="16" height="16" fill="#fff" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Chat
+          </button>
+        </div>
+
+        <!-- Job Title -->
+        <h2 id="dt-title" style="font-size:19px; font-weight:800; color:#16202A; margin-bottom:8px; line-height:1.3;"></h2>
+
+        <!-- Location & Budget Row -->
+        <div style="display:flex; gap:10px; margin-bottom:14px;">
+          <div style="flex:1; background:#F0FDF4; border-radius:14px; padding:12px; text-align:center;">
+            <div style="font-size:9px; font-weight:800; color:#059669; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Budget</div>
+            <div id="dt-val" style="font-size:16px; font-weight:900; color:#059669;"></div>
+          </div>
+          <div style="flex:2; background:#F8FAFC; border-radius:14px; padding:12px;">
+            <div style="font-size:9px; font-weight:800; color:#828F9E; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Location</div>
+            <div id="dt-loc-text" style="font-size:13px; font-weight:800; color:#16202A;"></div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div style="background:#F8FAFC; border-radius:16px; padding:14px; margin-bottom:20px;">
+          <div style="font-size:10px; font-weight:800; color:#828F9E; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Work Description</div>
+          <div id="dt-desc" style="font-size:13px; font-weight:600; color:#16202A; line-height:1.6;"></div>
+        </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div id="job-footer" style="padding:16px 20px 32px; background:#fff; border-top:1.5px solid #EDF1F5; opacity:0; transition:0.3s; display:flex; gap:10px;">
+        <button onclick="closeDetail()" style="width:44px; height:52px; border-radius:14px; border:1.5px solid #EDF1F5; background:#F8FAFC; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <svg width="20" height="20" stroke="#828F9E" stroke-width="2.5" fill="none" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button onclick="bookNow()" style="flex:1; height:52px; border-radius:14px; border:none; background:linear-gradient(135deg, #6A1FC2, #9086FF); color:#fff; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 8px 20px rgba(106,31,194,0.35);">Book This Work →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== COMPLETION UPLOAD MODAL ===== -->
+  <div id="completion-modal" style="position:fixed; inset:0; z-index:9000; display:none; align-items:flex-end; justify-content:center; background:rgba(15,23,42,0.7); backdrop-filter:blur(8px);">
+    <div style="width:100%; max-width:480px; background:#fff; border-radius:32px 32px 0 0; padding:24px 24px 40px; animation:slideUp 0.4s cubic-bezier(0.34,1.56,0.64,1);">
+      <div style="width:40px; height:4px; background:#E2E8F0; border-radius:100px; margin:0 auto 20px;"></div>
+      <div style="text-align:center; margin-bottom:24px;">
+        <div style="width:64px; height:64px; background:linear-gradient(135deg, #ECFDF5, #D1FAE5); border-radius:20px; margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-size:32px;">📸</div>
+        <h3 style="font-size:18px; font-weight:800; color:#16202A; margin-bottom:6px;">Upload Work Proof</h3>
+        <p style="font-size:13px; color:#828F9E; font-weight:600; line-height:1.5;">Take or upload a photo of the completed work. This will be sent to the contractor and mark the job as <strong style="color:#059669;">Completed</strong>.</p>
+      </div>
+      
+      <!-- Upload Area -->
+      <div id="comp-upload-area" onclick="document.getElementById('comp-file-inp').click()" style="border:2px dashed #D1FAE5; border-radius:20px; padding:30px; text-align:center; cursor:pointer; transition:0.3s; margin-bottom:16px; background:#F0FDF4;">
+        <div id="comp-placeholder">
+          <svg width="40" height="40" stroke="#059669" stroke-width="1.5" fill="none" viewBox="0 0 24 24" style="margin:0 auto 10px; display:block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div style="font-size:14px; font-weight:800; color:#059669;">Tap to Upload Completion Photo</div>
+          <div style="font-size:11px; color:#828F9E; margin-top:4px;">JPG, PNG • Max 2MB</div>
+        </div>
+        <img id="comp-preview-img" src="" style="display:none; width:100%; border-radius:12px; max-height:180px; object-fit:cover;">
+      </div>
+      <input type="file" id="comp-file-inp" accept="image/*" style="display:none;" onchange="handleCompletionPhoto(this)">
+      
+      <button id="comp-submit-btn" onclick="submitCompletion()" style="width:100%; padding:16px; border:none; background:linear-gradient(135deg, #059669, #10B981); color:#fff; border-radius:18px; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 8px 20px rgba(5,150,105,0.3); margin-bottom:10px;">✓ Mark Work as Completed</button>
+      <button onclick="closeCompletionModal()" style="width:100%; padding:14px; border:1.5px solid #EDF1F5; background:#F8FAFC; color:#828F9E; border-radius:18px; font-size:14px; font-weight:700; cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+
+  <style>
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    #detail-panel.open #dp-backdrop { background:rgba(15,23,42,0.5); pointer-events:all; }
+    #detail-panel.open #dp-sheet { transform: translateX(-50%) translateY(0); }
+    #detail-panel.open #job-footer { opacity:1; }
+    #detail-panel.open { pointer-events:all; }
+  </style>
+
 </div>
 
 <script>
@@ -606,13 +704,12 @@
 
   // Firebase Safety Init
   const firebaseConfig = { 
-    apiKey: "AIzaSyCMf099O5GYoumvMZGIYOKwJU96K9Djh8A", 
-    authDomain: "tnpvc-project.firebaseapp.com", 
-    projectId: "tnpvc-project", 
-    storageBucket: "tnpvc-project.firebasestorage.app", 
-    messagingSenderId: "568663363697", 
-    appId: "1:568663363697:web:a75cb28bd69d97b19f8bd0",
-    measurementId: "G-VNBJJXMLR6"
+    apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU", 
+    authDomain: "tnpvc-connect-hub.firebaseapp.com", 
+    projectId: "tnpvc-connect-hub", 
+    storageBucket: "tnpvc-connect-hub.firebasestorage.app", 
+    messagingSenderId: "919957830993", 
+    appId: "1:919957830993:web:e1a2036a4258f683826770"
   };
   if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
@@ -728,37 +825,55 @@
   }
 
   function renderNotifs() {
-     const list = document.getElementById('notif-list');
-     // Adding some dummy notifs based on activity
-     const myBookings = JSON.parse(localStorage.getItem('my_booked_jobs') || '[]');
-     if(myBookings.length > 0) {
-        list.innerHTML = myBookings.reverse().map(b => `
-          <div class="notif-card">
-            <div class="nc-icon">✅</div>
-            <div class="nc-body">
-              <div class="nc-title">Order Confirmed</div>
-              <div class="nc-desc">You successfully booked: ${b.title}. Contractor will contact you soon.</div>
-            </div>
-          </div>
-        `).join('') + `
-          <div class="notif-card">
-            <div class="nc-icon">🎁</div>
-            <div class="nc-body">
-              <div class="nc-title">Welcome Bonus</div>
-              <div class="nc-desc">Complete your profile to get more orders in your area.</div>
-            </div>
-          </div>
-        `;
-     }
+    const list = document.getElementById('notif-list');
+    const myBookings = JSON.parse(localStorage.getItem('my_booked_jobs') || '[]');
+    const systemNotifs = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
+    
+    // Combine notifications
+    let all = [...systemNotifs];
+    myBookings.forEach(b => {
+      all.push({
+        id: b.id + '_book',
+        title: "Order Confirmed",
+        body: "You booked: " + b.title,
+        date: b.bookedAt,
+        type: 'booking'
+      });
+    });
+
+    // Sort by date desc
+    all.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+    if(all.length === 0) {
+      list.innerHTML = `<div style="text-align:center; padding:40px 24px; background:#fff; border-radius:24px; border:1.5px dashed var(--border);"><div style="font-size:40px; margin-bottom:12px;">🔔</div><p style="color:var(--text-muted); font-weight:700;">No notifications yet</p></div>`;
+      return;
+    }
+
+    list.innerHTML = all.map(n => `
+      <div class="notif-card" style="margin-bottom:12px; background:#fff; border-radius:18px; padding:16px; border:1px solid var(--border); display:flex; gap:12px; align-items:flex-start;">
+        <div style="width:40px; height:40px; border-radius:12px; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;">
+          ${n.type === 'booking' ? '📅' : '👷'}
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:14px; font-weight:800; color:var(--text-dark);">${n.title}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">${n.body}</div>
+          <div style="font-size:10px; color:#94A3B8; margin-top:6px; font-weight:700;">${new Date(n.date).toLocaleString()}</div>
+        </div>
+        ${n.unread ? `<div style="width:8px; height:8px; background:var(--primary); border-radius:50%; margin-top:6px;"></div>` : ''}
+      </div>
+    `).join('');
+    
+    markNotifsRead();
   }
 
   // Jobs Listener (High Power Real-time Delivery & Toast Alert)
   // Jobs Listener (High Power Real-time Delivery for BOTH Districts)
   let lastSeenJobId = null;
 
-  db.collection("jobs")
-    .where("district", "in", userDistricts)
-    .onSnapshot(snap => {
+  if(userDistricts.length > 0) {
+    db.collection("jobs")
+      .where("district", "in", userDistricts)
+      .onSnapshot(snap => {
       let rawJobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
       
       let activeJobs = rawJobs.filter(job => job.status === "Active");
@@ -766,14 +881,48 @@
       window.jobs_cache = window.allJobs;
       
       if(snap.docs.length > 0 && lastSeenJobId && snap.docs[0].id !== lastSeenJobId) {
-        showToast("🔥 NEW JOB POSTED! Check Marketplace.");
+        const newJob = snap.docs[0].data();
+        showToast("🔥 NEW JOB POSTED in " + newJob.district + "!");
         if(typeof navigator.vibrate === "function") navigator.vibrate(200);
+        
+        // Add to persistent notifications
+        saveNewNotification({
+          id: snap.docs[0].id,
+          title: "New Job: " + newJob.title,
+          body: "New requirement posted in " + newJob.area + " (" + newJob.district + ")",
+          date: new Date().toISOString(),
+          unread: true
+        });
       }
       if(snap.docs.length > 0) lastSeenJobId = snap.docs[0].id;
       else if(!lastSeenJobId) lastSeenJobId = "none";
 
       if(document.getElementById('tab-orders').classList.contains('active')) renderJobs();
+      checkNotifDot();
     });
+  }
+
+  function saveNewNotification(notif) {
+    let list = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
+    if(!list.find(n => n.id === notif.id)) {
+      list.unshift(notif);
+      localStorage.setItem('tnpvc_notifications', JSON.stringify(list.slice(0, 50))); // Keep last 50
+    }
+  }
+
+  function checkNotifDot() {
+    const list = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
+    const hasUnread = list.some(n => n.unread);
+    const dot = document.getElementById('bell-dot');
+    if(dot) dot.style.display = hasUnread ? 'block' : 'none';
+  }
+
+  function markNotifsRead() {
+    let list = JSON.parse(localStorage.getItem('tnpvc_notifications') || '[]');
+    list.forEach(n => n.unread = false);
+    localStorage.setItem('tnpvc_notifications', JSON.stringify(list));
+    checkNotifDot();
+  }
 
   function filterJobsMarket(cat) {
     windowCategoryFilter = cat;
@@ -855,11 +1004,11 @@
       supplierWrap.style.display = 'none';
     }
 
-    let jobs = (window.jobs_cache || []).filter(j => j.district === tnpvc_u.district).reverse();
+    let jobs = (window.jobs_cache || []).filter(j => userDistricts.includes(j.district)).reverse();
     if(windowCategoryFilter) jobs = jobs.filter(j => j.category === windowCategoryFilter);
     
     if(jobs.length === 0 && window.jobs_cache) {
-      feed.innerHTML = `<div style="text-align:center; padding:40px 20px; background:#fff; border-radius:24px; margin:20px 24px; border:1.5px dashed #e2e8f0;"><div style="font-size:44px; margin-bottom: 12px;">📍</div><h3 style="margin:0 0 5px; font-size:16px;">No Orders Found</h3><p style="font-size:13px; color:#64748b;">${windowCategoryFilter ? `There are no active orders for '${windowCategoryFilter}' in your district.` : `No active orders currently available in ${tnpvc_u.district}.`}</p>
+      feed.innerHTML = `<div style="text-align:center; padding:40px 20px; background:#fff; border-radius:24px; margin:20px 24px; border:1.5px dashed #e2e8f0;"><div style="font-size:44px; margin-bottom: 12px;">📍</div><h3 style="margin:0 0 5px; font-size:16px;">No Orders Found</h3><p style="font-size:13px; color:#64748b;">${windowCategoryFilter ? `There are no active orders for '${windowCategoryFilter}' in your districts.` : `No active orders currently available in your monitored districts (${userDistricts.join(', ')}).`}</p>
       ${windowCategoryFilter ? `<button onclick="filterJobsMarket(null)" style="margin-top:16px; padding:10px 24px; border-radius:100px; background:#F8FAFC; border:1.5px solid var(--border); font-weight:700; color:var(--text-dark); cursor:pointer;">Clear Filter</button>` : ''}
       </div>`;
       return;
@@ -876,7 +1025,7 @@
           ${j.category ? `<div style="font-size:10px; font-weight:800; background:var(--primary-light); color:var(--primary); display:inline-block; padding:4px 8px; border-radius:8px; margin-top:4px;">${j.category}</div>` : ''}
           <div class="j-meta" style="margin-top:6px;">
             <span class="j-price">₹${j.budget}</span>
-            <span class="j-loc">${j.area}</span>
+            <span class="j-loc">${j.area} (${j.district})</span>
           </div>
         </div>
       </div>
@@ -884,67 +1033,202 @@
   }
 
   let currentJobId = null;
+  let currentJobPhone = null;
+  let completionTargetJobId = null;
+  let completionPhotoData = null;
+
   function openJob(id) {
     const job = (window.allJobs || []).find(j => j.id == id);
     if(!job) return;
     currentJobId = id;
+    currentJobPhone = job.phone || '';
+    // Contractor mongo dp
+    const dpUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(job.contractor||'C')}&background=6A1FC2&color=fff&bold=true&size=100`;
+    document.getElementById('dt-contractor-dp').src = dpUrl;
+    document.getElementById('dt-con').textContent = job.contractor || 'Contractor';
     document.getElementById('dt-title').textContent = job.title;
-    document.getElementById('dt-img').src = job.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(job.title)+'&background=9086FF&color=fff';
-    document.getElementById('dt-con').textContent = "Post by " + job.contractor;
-    document.getElementById('dt-val').textContent = "₹" + job.budget;
-    document.getElementById('dt-desc').textContent = job.desc || "Skilled labor required for " + job.title;
-    document.getElementById('dt-loc-text').textContent = job.area || job.district;
+    document.getElementById('dt-img').src = job.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(job.title)}&background=EDE9FE&color=6A1FC2&size=300`;
+    document.getElementById('dt-val').textContent = '\u20b9' + job.budget;
+    document.getElementById('dt-desc').textContent = job.desc || 'Skilled labor required for ' + job.title;
+    document.getElementById('dt-loc-text').textContent = (job.area||'') + (job.district ? ', ' + job.district : '');
+    const badge = document.getElementById('dt-cat-badge');
+    if(badge) badge.textContent = job.category || '';
     document.getElementById('detail-panel').classList.add('open');
-    setTimeout(() => document.getElementById('job-footer').classList.add('show'), 200);
   }
 
   function closeDetail() {
-    document.getElementById('job-footer').classList.remove('show');
     document.getElementById('detail-panel').classList.remove('open');
   }
 
+  function openWhatsApp() {
+    const job = (window.allJobs || []).find(j => j.id == currentJobId);
+    if(!job) return;
+    const ph = job.phone && job.phone.length === 10 ? '91' + job.phone : (job.phone || '');
+    if(!ph) { showToast('No WhatsApp number'); return; }
+    window.open(`https://wa.me/${ph}?text=Hi, I saw your ${job.title} post on TNPVC Connect Hub. I am interested in doing this work.`, '_blank');
+  }
+
   function bookNow() {
-    const isSubscribed = true; // Temporary logic parity
-    if(!isSubscribed) { showToast("Renew subscription to book!"); return; }
-    const job = window.allJobs.find(j => j.id == currentJobId);
-    
-    // Local History
+    const job = (window.allJobs || []).find(j => j.id == currentJobId);
+    if(!job) { showToast('Job not found'); return; }
+
     let myBookings = JSON.parse(localStorage.getItem('my_booked_jobs') || '[]');
     if(!myBookings.find(b => b.id === job.id)) {
-      myBookings.push({ ...job, bookedAt: new Date().toISOString() });
+      myBookings.push({ ...job, bookedAt: new Date().toISOString(), completionStatus: 'Booked' });
       localStorage.setItem('my_booked_jobs', JSON.stringify(myBookings));
-      document.getElementById('stat-works').textContent = myBookings.length;
     }
 
-    db.collection("notifications").add({ contractor: job.contractor, labour: tnpvc_u.name, title: "Order Booked!", body: `${tnpvc_u.name} is interested in: ${job.title}`, date: new Date().toISOString(), type: "booking", read: false });
-    showToast("Booking Successful!");
-    setTimeout(() => { 
-      window.open(`https://wa.me/${job.phone.length===10?'91'+job.phone:job.phone}?text=Hi, I am interested in your ${job.title} work.`); 
+    db.collection('notifications').add({
+      contractor: job.contractor || '',
+      contractorId: job.contractorId || '',
+      labour: tnpvc_u.name,
+      labourPhone: tnpvc_u.phone || '',
+      title: '\uD83D\uDD14 New Booking!',
+      body: `${tnpvc_u.name} has booked: ${job.title} in ${job.area}`,
+      date: new Date().toISOString(),
+      type: 'booking',
+      jobId: job.id,
+      read: false
+    }).catch(e => {});
+
+    showToast('\u2705 Booked Successfully!');
+    setTimeout(() => {
+      const ph = job.phone && job.phone.length === 10 ? '91' + job.phone : (job.phone || '');
+      if(ph) window.open(`https://wa.me/${ph}?text=Hi ${job.contractor}, I booked your "${job.title}" work on TNPVC Connect Hub.`, '_blank');
       closeDetail();
-      switchTab('tab-bookings-list');
-    }, 1000);
+      switchTab('tab-bookings-list', document.getElementById('btn-nav-chat'));
+    }, 800);
   }
 
   function renderBookedHistory() {
     const container = document.getElementById('booked-items');
     const myBookings = JSON.parse(localStorage.getItem('my_booked_jobs') || '[]');
     if(myBookings.length === 0) {
-      container.innerHTML = `<div style="text-align: center; padding: 100px 20px;"><div style="font-size: 50px; margin-bottom: 24px;">📅</div><h3 style="font-size: 18px; font-weight: 800; color: var(--text-dark);">No Bookings Yet</h3><p style="color:var(--text-muted); font-size:14px; margin-top:8px;">Start booking orders from the marketplace.</p></div>`;
+      container.innerHTML = `<div style="text-align:center; padding:80px 24px;"><div style="font-size:52px; margin-bottom:20px;">\uD83D\uDCC5</div><h3 style="font-size:18px; font-weight:800;">No Bookings Yet</h3><p style="color:var(--text-muted); font-size:13px; margin-top:8px;">Book a job from Orders tab to see it here.</p></div>`;
       return;
     }
-    container.innerHTML = myBookings.map(j => `
-      <div class="job-item">
-        <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=9086FF&color=fff'}">
-        <div class="j-info">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-            <div class="j-title">${j.title}</div>
-            <div style="font-size:11px; background:var(--primary-light); color:var(--primary); font-weight:800; padding:4px 8px; border-radius:6px;">Booked</div>
-          </div>
-          <div class="j-meta"><span class="j-price">₹${j.budget}</span><span class="j-loc">Loc: ${j.area}</span></div>
+    const completed = myBookings.filter(b => b.completionStatus === 'Completed').length;
+    document.getElementById('stat-works').textContent = completed;
+
+    container.innerHTML = myBookings.map(j => {
+      const done = j.completionStatus === 'Completed';
+      const dpUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(j.contractor||'C')}&background=6A1FC2&color=fff&bold=true`;
+      const imgUrl = done && j.completionImage ? j.completionImage : (j.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(j.title)}&background=EDE9FE&color=6A1FC2`);
+      const ph = j.phone && j.phone.length === 10 ? '91' + j.phone : (j.phone || '');
+      const waLink = ph ? `https://wa.me/${ph}?text=Hi ${j.contractor}, I am working on your "${j.title}" job from TNPVC.` : '';
+      return `
+      <div style="background:#fff; border:1.5px solid ${done ? '#D1FAE5' : 'var(--border)'}; border-radius:22px; margin:0 16px 14px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.03);">
+        <div style="position:relative;">
+          <img src="${imgUrl}" style="width:100%; height:120px; object-fit:cover; display:block;">
+          <div style="position:absolute; top:10px; right:10px; background:${done ? '#059669' : '#6A1FC2'}; color:#fff; font-size:10px; font-weight:800; padding:5px 12px; border-radius:100px;">${done ? '\u2713 Completed' : 'Booked'}</div>
         </div>
-      </div>
-    `).join('');
-    document.getElementById('stat-works').textContent = myBookings.length;
+        <div style="padding:14px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <img src="${dpUrl}" style="width:26px; height:26px; border-radius:8px;">
+            <span style="font-size:11px; font-weight:700; color:#828F9E;">${j.contractor || 'Contractor'}</span>
+          </div>
+          <div style="font-size:15px; font-weight:800; color:var(--text-dark); margin-bottom:4px;">${j.title}</div>
+          <div style="font-size:12px; color:#828F9E; font-weight:600; margin-bottom:12px;">\uD83D\uDCCD ${j.area}, ${j.district} | \u20b9${j.budget}</div>
+          ${!done ? `
+          <div style="display:flex; gap:8px;">
+            ${waLink ? `<a href="${waLink}" target="_blank" style="flex:1; padding:12px; background:#25D366; color:#fff; border:none; border-radius:14px; font-size:12px; font-weight:800; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:4px;">\uD83D\uDCAC WhatsApp</a>` : ''}
+            <button onclick="openCompletionModal('${j.id}')" style="flex:1; padding:12px; background:linear-gradient(135deg,#059669,#10B981); color:#fff; border:none; border-radius:14px; font-size:12px; font-weight:800; cursor:pointer;">\uD83D\uDCF8 Upload Completion</button>
+          </div>` : `
+          <div style="background:#F0FDF4; border-radius:14px; padding:12px; text-align:center;">
+            <div style="font-size:13px; font-weight:800; color:#059669;">\u2713 Work Completed</div>
+            <div style="font-size:11px; color:#059669; opacity:0.8; margin-top:2px;">Proof sent to contractor</div>
+          </div>`}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function openCompletionModal(jobId) {
+    completionTargetJobId = jobId;
+    completionPhotoData = null;
+    document.getElementById('comp-preview-img').style.display = 'none';
+    document.getElementById('comp-placeholder').style.display = 'block';
+    document.getElementById('comp-file-inp').value = '';
+    const btn = document.getElementById('comp-submit-btn');
+    btn.textContent = '\u2713 Mark Work as Completed';
+    btn.disabled = false;
+    document.getElementById('completion-modal').style.display = 'flex';
+  }
+
+  function closeCompletionModal() {
+    document.getElementById('completion-modal').style.display = 'none';
+    completionTargetJobId = null;
+    completionPhotoData = null;
+  }
+
+  function handleCompletionPhoto(input) {
+    if(!input.files || !input.files[0]) return;
+    const url = URL.createObjectURL(input.files[0]);
+    document.getElementById('comp-preview-img').src = url;
+    document.getElementById('comp-preview-img').style.display = 'block';
+    document.getElementById('comp-placeholder').style.display = 'none';
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height, MAX = 600;
+        if(w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        completionPhotoData = canvas.toDataURL('image/jpeg', 0.55);
+      };
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+
+  async function submitCompletion() {
+    if(!completionTargetJobId) { showToast('No job selected'); return; }
+    if(!completionPhotoData) { showToast('Please upload a photo first'); return; }
+    const btn = document.getElementById('comp-submit-btn');
+    btn.textContent = 'Uploading...';
+    btn.disabled = true;
+    try {
+      await Promise.race([
+        db.collection('jobs').doc(completionTargetJobId).update({
+          status: 'Completed',
+          completionImage: completionPhotoData,
+          completedBy: tnpvc_u.name,
+          completedByPhone: tnpvc_u.phone || '',
+          completedAt: new Date().toISOString()
+        }),
+        new Promise((_,rej) => setTimeout(() => rej(new Error('Timeout')), 15000))
+      ]);
+
+      let bk = JSON.parse(localStorage.getItem('my_booked_jobs') || '[]');
+      const idx = bk.findIndex(b => b.id === completionTargetJobId);
+      if(idx !== -1) {
+        bk[idx].completionStatus = 'Completed';
+        bk[idx].completionImage = completionPhotoData;
+        localStorage.setItem('my_booked_jobs', JSON.stringify(bk));
+      }
+      db.collection('notifications').add({
+        contractor: (bk[idx] || {}).contractor || '',
+        contractorId: (bk[idx] || {}).contractorId || '',
+        labour: tnpvc_u.name,
+        title: '\uD83C\uDF89 Work Completed!',
+        body: `${tnpvc_u.name} completed: ${(bk[idx]||{}).title}. Proof photo uploaded.`,
+        date: new Date().toISOString(),
+        type: 'completion',
+        jobId: completionTargetJobId,
+        completionImage: completionPhotoData,
+        read: false
+      }).catch(() => {});
+
+      closeCompletionModal();
+      showToast('\uD83C\uDF89 Work marked as Completed!');
+      setTimeout(() => renderBookedHistory(), 400);
+    } catch(err) {
+      showToast('\u274C Failed: ' + err.message);
+      btn.textContent = '\u2713 Mark Work as Completed';
+      btn.disabled = false;
+    }
   }
 
 
@@ -953,10 +1237,11 @@
   db.collection('app_config').doc('promo').onSnapshot(doc => {
     if(doc.exists) {
       const data = doc.data();
-      const banner = document.querySelector('.promo-banner img');
-      if(banner && data.imageUrl) banner.src = data.imageUrl;
-      const title = document.querySelector('.promo-banner h2');
-      if(title && data.title) title.textContent = data.title;
+      const hero = document.getElementById('hero-promo-banner');
+      if(hero && data.imageUrl) hero.src = data.imageUrl;
+      // Also update any promo headlines if present
+      const headline = document.querySelector('.promo-banner h2');
+      if(headline && data.title) headline.textContent = data.title;
     }
   });
 
@@ -991,11 +1276,14 @@
   renderJobs();
 
   // PROMOTIONS LISTENER (Cards)
-  db.collection('promotions').orderBy('createdAt', 'desc').onSnapshot(snap => {
+  db.collection('promotions').onSnapshot(snap => {
     const scroller = document.querySelector('.promo-scroll');
     if(!scroller) return;
-    scroller.innerHTML = snap.docs.map(doc => {
-      const p = doc.data();
+    
+    let docs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+    docs.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    scroller.innerHTML = docs.map(p => {
       return `<div class="p-card" style="background-image: url('${p.imageUrl}')">
         ${p.title ? `<h4>${p.title}</h4><p>Global Promotion</p>` : ''}
       </div>`;
