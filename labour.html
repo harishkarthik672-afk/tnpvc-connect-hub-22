@@ -871,35 +871,44 @@
   let lastSeenJobId = null;
 
   if(userDistricts.length > 0) {
+    // Normalizing districts for case-insensitive matching locally if needed
+    const normalizedUserDistricts = userDistricts.map(d => d.trim());
+    
     db.collection("jobs")
-      .where("district", "in", userDistricts)
+      .where("status", "==", "Active")
       .onSnapshot(snap => {
-      let rawJobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
-      
-      let activeJobs = rawJobs.filter(job => job.status === "Active");
-      window.allJobs = activeJobs.sort((a, b) => b.createdAt - a.createdAt);
-      window.jobs_cache = window.allJobs;
-      
-      if(snap.docs.length > 0 && lastSeenJobId && snap.docs[0].id !== lastSeenJobId) {
-        const newJob = snap.docs[0].data();
-        showToast("🔥 NEW JOB POSTED in " + newJob.district + "!");
-        if(typeof navigator.vibrate === "function") navigator.vibrate(200);
+        let rawJobs = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
         
-        // Add to persistent notifications
-        saveNewNotification({
-          id: snap.docs[0].id,
-          title: "New Job: " + newJob.title,
-          body: "New requirement posted in " + newJob.area + " (" + newJob.district + ")",
-          date: new Date().toISOString(),
-          unread: true
+        // Filter by district matching our userDistricts locally for maximum reliability
+        let activeJobs = rawJobs.filter(job => {
+          const jobDist = (job.district || "").trim();
+          return normalizedUserDistricts.includes(jobDist);
         });
-      }
-      if(snap.docs.length > 0) lastSeenJobId = snap.docs[0].id;
-      else if(!lastSeenJobId) lastSeenJobId = "none";
 
-      if(document.getElementById('tab-orders').classList.contains('active')) renderJobs();
-      checkNotifDot();
-    });
+        window.allJobs = activeJobs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        window.jobs_cache = window.allJobs;
+        
+        if(snap.docs.length > 0 && lastSeenJobId && snap.docs[0].id !== lastSeenJobId) {
+          const newJob = snap.docs[0].data();
+          // Only toast if it matches one of our districts
+          if(normalizedUserDistricts.includes((newJob.district || "").trim())) {
+            showToast("🔥 NEW JOB POSTED in " + newJob.district + "!");
+            saveNewNotification({
+              id: snap.docs[0].id,
+              title: "New Job: " + newJob.title,
+              body: "New requirement in " + newJob.area + " (" + newJob.district + ")",
+              date: new Date().toISOString(),
+              unread: true
+            });
+          }
+        }
+        lastSeenJobId = snap.docs.length > 0 ? snap.docs[0].id : lastSeenJobId;
+
+        renderJobs();
+        checkNotifDot();
+      }, err => {
+        console.error("Firestore Listen Error:", err);
+      });
   }
 
   function saveNewNotification(notif) {
@@ -981,51 +990,44 @@
 
   function renderJobs() {
     const feed = document.getElementById('job-feed');
-    const supplierWrap = document.getElementById('supplier-promo-wrap');
+    if(!feed) return;
     
-    // Show Supplier Promos if a category is selected
-    if(windowCategoryFilter && supplierWrap) {
-      supplierWrap.style.display = 'block';
-      const suppliers = [
-        { name: "Sai Profiles", tag: "UPVC Raw", icon: "🏢" },
-        { name: "Durga Hardware", tag: "Fittings", icon: "🛠️" },
-        { name: "Reliance Glass", tag: "Premium Glass", icon: "🪟" },
-        { name: "Supreme Pipes", tag: "Gaskets & Seals", icon: "🔗" }
-      ];
-      document.getElementById('supplier-list').innerHTML = suppliers.map(s => `
-        <div class="s-card" style="flex:0 0 140px; background:#fff; border:1.5px solid var(--border); border-radius:16px; padding:12px; text-align:center;">
-          <div class="s-logo" style="width:44px; height:44px; border-radius:10px; background:var(--primary-light); margin:0 auto 8px; display:flex; align-items:center; justify-content:center; font-size:20px;">${s.icon}</div>
-          <div class="s-name" style="font-size:11px; font-weight:800; color:var(--text-dark);">${s.name}</div>
-          <div class="s-tag" style="font-size:9px; font-weight:700; color:var(--primary); text-transform:uppercase;">${s.tag}</div>
-          <button class="s-btn" style="margin-top:8px; width:100%; border:none; background:#F1F5F9; color:var(--text-dark); font-size:10px; font-weight:800; padding:6px; border-radius:8px; cursor:pointer;" onclick="showToast('Contacting Supplier...')">Contact</button>
-        </div>
-      `).join('');
-    } else if(supplierWrap) {
-      supplierWrap.style.display = 'none';
-    }
+    // NORMALIZE USER DISTRICTS
+    const myDistricts = userDistricts.map(d => d.trim());
+    
+    // FILTER FROM CACHE
+    let jobs = (window.jobs_cache || []).filter(j => {
+      const jobDist = (j.district || "").trim();
+      return myDistricts.includes(jobDist);
+    }).reverse();
 
-    let jobs = (window.jobs_cache || []).filter(j => userDistricts.includes(j.district)).reverse();
-    if(windowCategoryFilter) jobs = jobs.filter(j => j.category === windowCategoryFilter);
+    if(windowCategoryFilter) {
+      jobs = jobs.filter(j => j.category === windowCategoryFilter);
+    }
     
-    if(jobs.length === 0 && window.jobs_cache) {
-      feed.innerHTML = `<div style="text-align:center; padding:40px 20px; background:#fff; border-radius:24px; margin:20px 24px; border:1.5px dashed #e2e8f0;"><div style="font-size:44px; margin-bottom: 12px;">📍</div><h3 style="margin:0 0 5px; font-size:16px;">No Orders Found</h3><p style="font-size:13px; color:#64748b;">${windowCategoryFilter ? `There are no active orders for '${windowCategoryFilter}' in your districts.` : `No active orders currently available in your monitored districts (${userDistricts.join(', ')}).`}</p>
-      ${windowCategoryFilter ? `<button onclick="filterJobsMarket(null)" style="margin-top:16px; padding:10px 24px; border-radius:100px; background:#F8FAFC; border:1.5px solid var(--border); font-weight:700; color:var(--text-dark); cursor:pointer;">Clear Filter</button>` : ''}
-      </div>`;
+    if(jobs.length === 0) {
+      feed.innerHTML = `
+        <div style="text-align:center; padding:60px 20px; background:#fff; border-radius:24px; border:1.5px dashed var(--border); margin:20px 16px;">
+          <div style="font-size:50px; margin-bottom:16px;">🕵️‍♂️</div>
+          <h3 style="font-size:16px; font-weight:800; color:var(--text-dark); margin-bottom:8px;">No Jobs Found</h3>
+          <p style="font-size:13px; color:var(--text-muted); font-weight:600; line-height:1.5;">${windowCategoryFilter ? `There are no active '${windowCategoryFilter}' orders in your districts right now.` : `We couldn't find any active jobs for ${myDistricts.join(', ')} right now. Check back soon!`}</p>
+          ${windowCategoryFilter ? `<button onclick="filterJobsMarket(null)" style="margin-top:16px; padding:10px 24px; border-radius:100px; background:#F8FAFC; border:1.5px solid var(--border); font-weight:700; color:var(--text-dark); cursor:pointer;">Clear Filter</button>` : ''}
+        </div>
+      `;
       return;
     }
-    if(!window.jobs_cache) return;
     
     feed.innerHTML = `
       ${windowCategoryFilter ? `<div style="text-align:right; margin-bottom:12px; margin-right:16px;"><span onclick="filterJobsMarket(null)" style="font-size:12px; font-weight:700; color:#DC2626; cursor:pointer; background:#FEE2E2; padding:6px 12px; border-radius:100px;">Clear Filter ✕</span></div>` : ''}
       ${jobs.map(j => `
       <div class="job-item" onclick="openJob('${j.id}')">
-        <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=9086FF&color=fff'}">
+        <img class="j-img" src="${j.image || 'https://ui-avatars.com/api/?name='+encodeURIComponent(j.title)+'&background=F5EFFF&color=6A1FC2'}">
         <div class="j-info">
           <div class="j-title">${j.title}</div>
-          ${j.category ? `<div style="font-size:10px; font-weight:800; background:var(--primary-light); color:var(--primary); display:inline-block; padding:4px 8px; border-radius:8px; margin-top:4px;">${j.category}</div>` : ''}
+          <div style="font-size:10px; font-weight:800; background:var(--primary-light); color:var(--primary); display:inline-block; padding:4px 8px; border-radius:8px; margin-top:4px;">${j.category || 'General'}</div>
           <div class="j-meta" style="margin-top:6px;">
             <span class="j-price">₹${j.budget}</span>
-            <span class="j-loc">${j.area} (${j.district})</span>
+            <span class="j-loc">📍 ${j.area} (${j.district})</span>
           </div>
         </div>
       </div>
