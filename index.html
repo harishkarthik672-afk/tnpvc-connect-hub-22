@@ -1069,9 +1069,9 @@
     // --- FIREBASE INITIALIZATION  // Firebase Safety Init
     const firebaseConfig = { 
       apiKey: "AIzaSyDSXxoyFGjMjlt9LcSu7B3kSWxShwcI2yU", 
-      authDomain: "tnpvc-connect-hub.firebaseapp.com", 
-      projectId: "tnpvc-connect-hub", 
-      storageBucket: "tnpvc-connect-hub.firebasestorage.app", 
+      authDomain: "tnpvc-project.firebaseapp.com", 
+      projectId: "tnpvc-project", 
+      storageBucket: "tnpvc-project.appspot.com", 
       messagingSenderId: "919957830993", 
       appId: "1:919957830993:web:e1a2036a4258f683826770"
     };
@@ -1091,36 +1091,22 @@
     window.proceedToApp = function(userData) {
       if(!userData) return;
       if (typeof userData === 'string') userData = JSON.parse(userData);
-      console.log("Proceeding to App for user:", userData.email, "Role:", userData.role);
       
-      window.safeHide('screen-hello');
-      window.safeHide('screen-auth');
-      window.safeHide('screen-role-select');
-      window.safeHide('screen-profile');
+      const role = userData.role || 'contractor';
+      const isCompleted = userData.profileCompleted || false;
 
+      // Handle custom fields visibility
       const extraRow = document.getElementById('row-district-extra');
-      const pHeader = document.querySelector('#screen-profile h2');
-      
-      if (userData.role === 'labour') {
-         if(extraRow) extraRow.style.display = 'block';
-         if(pHeader) pHeader.textContent = 'Worker Profile Setup';
-      } else {
-         if(extraRow) extraRow.style.display = 'none';
-         if(pHeader) pHeader.textContent = 'Contractor Profile Setup';
-      }
+      if (extraRow) extraRow.style.display = (role === 'labour') ? 'block' : 'none';
 
-      // FORCE PROFILE COMPLETION IF LABOUR IS MISSING DISTRICT EXTRA (Multi-district filtering requirement)
-      const isLabourMissingExtra = (userData.role === 'labour' && !userData.districtExtra && userData.profileCompleted);
-      
-      if (!userData.profileCompleted || isLabourMissingExtra) {
-        console.log("Showing tailored profile setup screen for role:", userData.role);
-        window.safeShow('screen-profile');
-        const nameP = document.getElementById('p-name');
-        if(nameP) nameP.value = userData.name || '';
+      if (isCompleted) {
+        const target = role === 'labour' ? 'labour.html' : 'contractor.html';
+        window.location.replace(target);
       } else {
-        const targetUrl = userData.role === 'labour' ? 'labour.html' : 'contractor.html';
-        console.log("Everything perfect. Redirecting to:", targetUrl);
-        window.location.replace(targetUrl);
+        window.safeHide('screen-hello');
+        window.safeHide('screen-auth');
+        window.safeHide('screen-role-select');
+        window.safeShow('screen-profile');
       }
     };
 
