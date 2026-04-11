@@ -9,16 +9,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/harishkarthik672-afk/tnpvc-official-website-11.git"
+    "url": "git+https://github.com/anusanoj2001-png/tnpvc.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/harishkarthik672-afk/tnpvc-official-website-11/issues"
+    "url": "https://github.com/anusanoj2001-png/tnpvc/issues"
   },
-  "homepage": "https://github.com/harishkarthik672-afk/tnpvc-official-website-11#readme",
+  "homepage": "https://github.com/anusanoj2001-png/tnpvc#readme",
   "dependencies": {
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
