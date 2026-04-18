@@ -500,7 +500,7 @@
                         style="background: #fff; border-radius: 15px; padding: 3rem 2rem; text-align: center; box-shadow: 0 15px 45px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; display: flex; flex-direction: column; align-items: center; transition: transform 0.3s ease;">
                         <div
                             style="width: 180px; height: 180px; border-radius: 50%; overflow: hidden; border: 4px solid #fff; box-shadow: 0 8px 25px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
-                            <img src="siranthan-siran.jpg" alt="Siranthan Siran - CEO of DEXAZ and TNPVC Board Member"
+                            <img src="siranthan-siran.jpg" alt="Siranthan Siran - CEO of SYROtech Hub and TNPVC Board Member"
                                 title="Siranthan Siran | Strategic Partner for TNPVC Technology"
                                 style="width: 100%; height: 100%; object-fit: cover; object-position: center top;"
                                 loading="lazy">
@@ -517,7 +517,7 @@
                         style="background: #fff; border-radius: 15px; padding: 3rem 2rem; text-align: center; box-shadow: 0 15px 45px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; display: flex; flex-direction: column; align-items: center; transition: transform 0.3s ease;">
                         <div
                             style="width: 180px; height: 180px; border-radius: 50%; overflow: hidden; border: 4px solid #fff; box-shadow: 0 8px 25px rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
-                            <img src="anuprintha.png" alt="Anuprintha - Operations Manager"
+                            <img src="anuprintha.png" alt="Anuprintha - All Over India Managing Director"
                                 style="width: 100%; height: 100%; object-fit: cover; object-position: center;"
                                 loading="lazy">
                         </div>
@@ -525,7 +525,7 @@
                             Anuprintha</h3>
                         <p
                             style="font-size: 1rem; color: #666; font-weight: 600; margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: 1px;">
-                            Operations Manager</p>
+                            All Over India Managing Director</p>
                         <a href="anuprintha-story.html" target="_blank" class="btn-zoho"
                             style="background: #4b2491; padding: 0.8rem 2rem; font-size: 0.85rem; border-radius: 4px; border: none; color: #fff; cursor: pointer; text-decoration: none; font-weight: 700; display: inline-block;"><span
                                 data-i18n="read_our_story">READ OUR STORY</span></a>
@@ -722,10 +722,10 @@
 
             <div class="footer-bottom">
                 <p>&copy; 2026, TNPVC Council Pvt. Ltd. <span data-i18n="footer_rights">All Rights Reserved.</span></p>
-                <div class="dexaz-footer">
-                    <span data-i18n="developing_by">Developing by</span>
-                    <strong>DEXAZ</strong>
-                    <a href="https://dexaz.in" target="_blank" class="btn-dexaz-learn" data-i18n="learn_more_btn">Learn
+                <div class="syrotech-footer">
+                    <span data-i18n="developing_by">Designed by</span>
+                    <strong>SYROtech Hub</strong>
+                    <a href="https://syrotechhub.in" target="_blank" class="btn-dexaz-learn" data-i18n="learn_more_btn">Learn
                         More</a>
                 </div>
             </div>
@@ -748,10 +748,11 @@
         </nav>
 
         <!-- Floating WhatsApp Button -->
-        <a href="https://chat.whatsapp.com/FgCSKeHKhsP3A5RoirRDcL" class="floating-whatsapp"
-            title="Join TNPVC on WhatsApp">
-            <i data-lucide="message-circle"></i>
+        <a href="javascript:void(0)" onclick="openWaModal()" class="floating-whatsapp" title="Join TNPVC on WhatsApp">
+            <i data-lucide="message-circle" style="stroke-width: 2.5px;"></i>
         </a>
+
+
 
 
     </main>
@@ -775,6 +776,7 @@
                 document.body.style.overflow = '';
             });
 
+            // Close on link click
             mobileNav.querySelectorAll('a').forEach(link => {
                 link.addEventListener('click', () => {
                     mobileNav.classList.remove('active');
@@ -782,6 +784,9 @@
                 });
             });
         }
+
+        // WhatsApp logic handled by whatsapp.js
+
 
         function toggleRegion(el) {
             const content = el.nextElementSibling;
@@ -809,7 +814,7 @@
                 text: 'Srinivasan built TNPVC operations with clear systems, verified members, and strong execution standards. His story is about turning field-level experience into a scalable and trusted platform.'
             },
             manager: {
-                title: 'Anuprintha - Operations Manager',
+                title: 'Anuprintha - All Over India Managing Director',
                 text: 'Anuprintha leads day-to-day coordination across teams, projects, and support. Her journey reflects consistent follow-up, smooth delivery, and hands-on care for both members and clients.'
             },
             karthik: {

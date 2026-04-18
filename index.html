@@ -218,136 +218,9 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="i18n.js" defer></script>
+    <script src="whatsapp.js" defer></script>
     <style>
         /* Welcome Popup — Floating Dual Boxes */
-        .welcome-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.95);
-            /* Pure white overlay, NO blur */
-            display: none;
-            align-items: flex-start;
-            /* Safe align for scrolling */
-            justify-content: center;
-            z-index: 10000;
-            padding: 40px 20px;
-            /* Space top and bottom */
-            overflow-y: auto;
-            /* Enable vertical scroll for overflow */
-            overflow-x: hidden;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .welcome-modal-overlay.active {
-            display: flex;
-            opacity: 1;
-        }
-
-        .welcome-modal-overlay.closing {
-            opacity: 0;
-            transition: opacity 0.4s ease 0.1s;
-        }
-
-        .welcome-modal-content {
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            /* Transparent container holding the 2 boxes */
-            margin: auto;
-            /* Centered unless overflowing */
-        }
-
-        /* -- Independent Boxes -- */
-        .popup-box {
-            background: #fff;
-            border-radius: 12px;
-            width: 100%;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            border: 1px solid #eee;
-            overflow: hidden;
-            opacity: 0;
-            transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-
-        /* 1st Box -> From Left */
-        .popup-box.box-left {
-            transform: translateX(-120vw) scale(0.7) rotate(-5deg);
-        }
-
-        /* 2nd Box -> From Right */
-        .popup-box.box-right {
-            transform: translateX(120vw) scale(0.7) rotate(5deg);
-        }
-
-        /* Super Animation: Elastic Slide + Zoom + Fade */
-        .welcome-modal-overlay.active:not(.closing) .popup-box.box-left {
-            transform: translateX(0) scale(1) rotate(0);
-            opacity: 1;
-            transition: all 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        .welcome-modal-overlay.active:not(.closing) .popup-box.box-right {
-            transform: translateX(0) scale(1) rotate(0);
-            opacity: 1;
-            transition: all 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            transition-delay: 0.15s;
-        }
-
-        /* Slide out */
-        .welcome-modal-overlay.closing .popup-box.box-left {
-            transform: translateX(-120vw) scale(0.8);
-            opacity: 0;
-            transition: all 0.5s ease-in;
-        }
-
-        .welcome-modal-overlay.closing .popup-box.box-right {
-            transform: translateX(120vw) scale(0.8);
-            opacity: 0;
-            transition: all 0.5s ease-in;
-        }
-
-        /* Box Internals */
-        .popup-top-bar {
-            padding: 14px 16px 10px;
-            background: #fff;
-            border-bottom: 1px solid #f0f0f0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .close-welcome-btn {
-            background: #f0f0f0;
-            border: none;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            font-size: 20px;
-            cursor: pointer;
-            color: #666;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .popup-top-bar-logo {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .popup-top-bar-logo img {
-            width: 28px;
-            height: 28px;
-            object-fit: contain;
-        }
-
         .popup-top-bar-logo span {
             font-size: 0.9rem;
             font-weight: 800;
@@ -864,7 +737,7 @@
                             finishing and on-time installation."
                         </blockquote>
                         <div class="author">
-                            <img src="siranthan-siran.jpg" alt="Siranthan Siran - CEO of DEXAZ and TNPVC Council Member"
+                            <img src="siranthan-siran.jpg" alt="Siranthan Siran - CEO of SYROtech Hub and TNPVC Council Member"
                                 title="Siranthan Siran | Supporting TNPVC's Vision for Organized Interiors"
                                 loading="lazy" itemprop="image">
                             <div class="author-info"
@@ -874,8 +747,8 @@
                                     siran</h5>
                                 <p
                                     style="font-size: 0.9rem; color: #e7ddff; margin: 0 0 1rem 0; opacity: 0.9; font-weight: 600;">
-                                    CEO & Founder, DEXAZ</p>
-                                <a href="https://dexaz.in" target="_blank"
+                                    CEO & Founder, SYROtech Hub</p>
+                                <a href="https://syrotechhub.in" target="_blank"
                                     style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; text-decoration: none; font-size: 0.75rem; font-weight: 700; padding: 6px 16px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease; width: fit-content;">
                                     Learn More <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
                                 </a>
@@ -1204,13 +1077,13 @@
                 <!-- Manager Profile Box (Replacement for button) -->
                 <div class="manager-profile animate" style="animation-delay: 0.5s;">
                     <div class="manager-image">
-                        <img src="anuprintha.png" alt="Anuprintha - Operations Manager at TNPVC Council Tamil Nadu"
+                        <img src="anuprintha.png" alt="Anuprintha - All Over India Managing Director at TNPVC Council Tamil Nadu"
                             title="Anuprintha Manager | Coordinating PVC Work Across TN" loading="lazy"
                             itemprop="image">
                     </div>
                     <div class="manager-info">
                         <h4>Anuprintha</h4>
-                        <p data-i18n="manager">Operations Manager</p>
+                        <p data-i18n="manager">All Over India Managing Director</p>
                         <a href="anuprintha-story.html" class="btn-zoho"
                             style="background: #e3001b; padding: 0.6rem 1.5rem; font-size: 0.75rem; border-radius: 4px; border: none; color: #fff; cursor: pointer; text-decoration: none; font-weight: 700; display: inline-block; margin-top: 1rem;"><span
                                 data-i18n="read_our_story">READ OUR STORY</span></a>
@@ -1413,10 +1286,10 @@
 
                 <p>&copy; 2026, TNPVC Council Pvt. Ltd. <span data-i18n="footer_rights">All Rights Reserved.</span>
                 </p>
-                <div class="dexaz-footer">
-                    <span data-i18n="developing_by">Developing by</span>
-                    <strong>DEXAZ</strong>
-                    <a href="https://dexaz.in" target="_blank" class="btn-dexaz-learn" data-i18n="learn_more_btn">Learn
+                <div class="syrotech-footer">
+                    <span data-i18n="developing_by">Designed by</span>
+                    <strong>SYROtech Hub</strong>
+                    <a href="https://syrotechhub.in" target="_blank" class="btn-dexaz-learn" data-i18n="learn_more_btn">Learn
                         More</a>
                 </div>
             </div>
@@ -1427,60 +1300,7 @@
             <i data-lucide="message-circle" style="stroke-width: 2.5px;"></i>
         </a>
 
-        <!-- WhatsApp Membership Form Modal -->
-        <div id="waMembershipModal" class="welcome-modal-overlay">
-            <div class="welcome-modal-content"
-                style="max-width: 450px; padding: 30px; border-radius: 24px; border: 1px solid rgba(37, 211, 102, 0.2);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h2 style="font-size:1.5rem; color:#1b0f3a; margin:0; font-weight: 800;">TNPVC <span
-                            style="color:#25D366;">WhatsApp</span></h2>
-                    <button class="close-welcome-btn" onclick="closeWaModal()"
-                        style="position:static; padding:0; height:auto; width:auto; border:none; background:none; font-size:2.4rem; cursor:pointer; color: #1b0f3a; line-height: 1;">&times;</button>
-                </div>
 
-                <div id="waFormStep">
-                    <p style="font-size:0.9rem; color:#65676b; margin-bottom:20px; font-weight: 500;">Please provide
-                        your basic details for membership verification before joining the group.</p>
-                    <div style="display:flex; flex-direction:column; gap:12px;">
-                        <input type="text" id="wa_name" placeholder="Full Name"
-                            style="padding:14px; border:1px solid #efefef; background: #f9fafb; border-radius:12px; font-size:0.95rem; font-family: inherit;">
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                            <input type="number" id="wa_age" placeholder="Age"
-                                style="padding:14px; border:1px solid #efefef; background: #f9fafb; border-radius:12px; font-size:0.95rem; font-family: inherit;">
-                            <input type="tel" id="wa_phone" placeholder="Phone Number"
-                                style="padding:14px; border:1px solid #efefef; background: #f9fafb; border-radius:12px; font-size:0.95rem; font-family: inherit;">
-                        </div>
-                        <input type="text" id="wa_address" placeholder="Full Address / City"
-                            style="padding:14px; border:1px solid #efefef; background: #f9fafb; border-radius:12px; font-size:0.95rem; font-family: inherit;">
-                        <input type="text" id="wa_shop" placeholder="Shop / Business Name"
-                            style="padding:14px; border:1px solid #efefef; background: #f9fafb; border-radius:12px; font-size:0.95rem; font-family: inherit;">
-                        <input type="text" id="wa_aadhar" placeholder="Aadhar Number"
-                            style="padding:14px; border:1px solid #efefef; background: #f9fafb; border-radius:12px; font-size:0.95rem; font-family: inherit;">
-                        <input type="email" id="wa_gmail" placeholder="Gmail Address"
-                            style="padding:14px; border:1px solid #efefef; background: #f9fafb; border-radius:12px; font-size:0.95rem; font-family: inherit;">
-
-                        <button onclick="submitWaForm()"
-                            style="background:#25D366; color:white; padding:16px; border:none; border-radius:12px; font-weight:800; font-size:1.05rem; cursor:pointer; margin-top:10px; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.25); transition: all 0.3s ease;">Verify
-                            & Send Details</button>
-                    </div>
-                </div>
-
-                <div id="waJoinStep" style="display:none; text-align:center; padding:20px 0;">
-                    <div
-                        style="background:#f0fff4; color:#25D366; padding:0; width:100px; height:100px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 25px; border: 4px solid #ccf6d9;">
-                        <i data-lucide="check-circle" style="width:50px; height:50px;"></i>
-                    </div>
-                    <h3 style="font-size:1.6rem; color:#1b0f3a; margin-bottom:10px; font-weight: 800;">Identity
-                        Verified!</h3>
-                    <p style="color:#65676b; margin-bottom:30px; font-weight: 500;">You are now eligible to join the
-                        official TNPVC community group.</p>
-                    <a href="https://chat.whatsapp.com/FgCSKeHKhsP3A5RoirRDcL" target="_blank" class="btn-download-app"
-                        style="background:#25D366; border-color:#25D366; width:100%; height: 55px; border-radius: 16px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 10px 30px rgba(37, 211, 102, 0.4);">
-                        <i data-lucide="users-2"></i> Join Now
-                    </a>
-                </div>
-            </div>
-        </div>
 
 
 
@@ -1550,6 +1370,7 @@
                     splash.classList.add('fade-out');
                     setTimeout(() => {
                         splash.style.display = 'none';
+                        document.body.style.overflow = ''; // Ensure scrolling is enabled
                         // Mobile Menu Logic
                         const mobileToggle = document.getElementById('mobileMenuBtn');
                         const mobileNav = document.getElementById('mobileNav');
@@ -1586,7 +1407,7 @@
                         }
 
                         // Show Welcome Popup on Website Open (after splash)
-                        showWelcomePopup();
+                        // showWelcomePopup(); // Disabled automatic popup to prevent scroll blocking
 
                     }, 650);
                 }, 1800);
@@ -1699,43 +1520,7 @@
                 }, 500); // Wait for transition
             }
 
-            // --- WhatsApp Membership Modal Logic ---
-            function openWaModal() {
-                const modal = document.getElementById('waMembershipModal');
-                document.getElementById('waFormStep').style.display = 'block';
-                document.getElementById('waJoinStep').style.display = 'none';
-                modal.classList.add('active');
-                document.body.style.overflow = 'hidden';
-                lucide.createIcons();
-            }
-
-            function closeWaModal() {
-                const modal = document.getElementById('waMembershipModal');
-                modal.classList.add('closing');
-                setTimeout(() => {
-                    modal.classList.remove('active');
-                    modal.classList.remove('closing');
-                    document.body.style.overflow = '';
-                }, 400);
-            }
-
-            function submitWaForm() {
-                const name = document.getElementById('wa_name').value;
-                const age = document.getElementById('wa_age').value;
-                const phone = document.getElementById('wa_phone').value;
-                const address = document.getElementById('wa_address').value;
-                const aadhar = document.getElementById('wa_aadhar').value;
-
-                if (!name || !age || !phone || !address || !aadhar) {
-                    alert('Please fill in all the required identity details.');
-                    return;
-                }
-
-                // Show "Join Now" step
-                document.getElementById('waFormStep').style.display = 'none';
-                document.getElementById('waJoinStep').style.display = 'block';
-                lucide.createIcons();
-            }
+            // WhatsApp modal logic handled by whatsapp.js
         </script>
 
         <!-- Coming Soon Toast for App Download -->

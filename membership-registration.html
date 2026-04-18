@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Membership Registration | TNPVC Council</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="i18n.js" defer></script>
+    <style>
+        .form-hero {
+            background: linear-gradient(135deg, #1b0f3a 0%, #4b2491 100%);
+            padding: 5rem 0 3rem;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-hero::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('hero image.png') center/cover;
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+        .form-hero .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .form-container-box {
+            max-width: 650px;
+            margin: -4rem auto 5rem;
+            background: white;
+            padding: 3rem;
+            border-radius: 24px;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.12);
+            position: relative;
+            z-index: 10;
+            border: 1px solid #eee;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        .form-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 0.6rem;
+            font-weight: 700;
+            color: #1b0f3a;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 1.1rem;
+            border: 1.5px solid #efefef;
+            border-radius: 14px;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s;
+            background: #f9fafb;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #25D366;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(37, 211, 102, 0.1);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            padding: 1.1rem;
+            border: 1.5px solid #efefef;
+            background: #f9fafb;
+            border-radius: 14px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #444;
+        }
+
+        .radio-option input {
+            width: auto;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .btn-whatsapp-submit {
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 1.3rem;
+            border-radius: 16px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 1rem;
+            box-shadow: 0 15px 30px rgba(37, 211, 102, 0.3);
+        }
+
+        .btn-whatsapp-submit:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(37, 211, 102, 0.4);
+        }
+
+        .form-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .form-tag {
+            background: #eefdf3;
+            color: #25D366;
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+
+        .form-header h2 {
+            font-size: 2.2rem;
+            color: #1b0f3a;
+            margin-bottom: 0.8rem;
+            font-weight: 800;
+        }
+
+        .form-header p {
+            color: #65676b;
+            font-size: 1.05rem;
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-group.full-width {
+                grid-column: span 1;
+            }
+            .form-container-box {
+                margin: -2rem 1rem 4rem;
+                padding: 2.5rem 1.5rem;
+            }
+        }
+
+        /* Success Step */
+        #successStep {
+            display: none;
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .success-icon {
+            width: 100px;
+            height: 100px;
+            background: #eefdf3;
+            color: #25D366;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            border: 4px solid #ccf6d9;
+        }
+
+        .btn-join-now {
+            background: #25D366;
+            color: white;
+            text-decoration: none;
+            padding: 1.2rem 2rem;
+            border-radius: 14px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 2rem;
+            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="site-notice-bar">
+        <span class="notice-text">Official TNPVC Member Verification Portal</span>
+    </div>
+
+    <header class="navbar">
+        <div class="container nav-container">
+            <div class="nav-left-group">
+                <a href="index.html" class="logo">
+                    <img src="logo.png" alt="TNPVC Council">
+                    <span>TNPVC</span>
+                </a>
+            </div>
+            <div class="nav-right">
+                <a href="index.html" style="text-decoration: none; color: #1b0f3a; font-weight: 700; font-size: 0.9rem;">BACK TO HOME</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="form-hero">
+            <div class="container">
+                <h1 style="font-size: 3rem; font-weight: 800; margin-bottom: 1rem;">Join TNPVC Network</h1>
+                <p style="font-size: 1.1rem; opacity: 0.9;">Secure registration for all Tamil Nadu PVC community members.</p>
+            </div>
+        </section>
+
+        <div class="form-container-box">
+            <div id="formStep">
+                <div class="form-header">
+                    <span class="form-tag">Identity Verification</span>
+                    <h2>Membership Entry</h2>
+                    <p>Please enter your details accurately. This information will be sent to the administrator for verification.</p>
+                </div>
+
+                <form id="membershipForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label><i data-lucide="user"></i> Full Name</label>
+                            <input type="text" id="wa_name" placeholder="John Doe" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i data-lucide="phone"></i> Phone Number</label>
+                            <input type="tel" id="wa_phone" placeholder="98765 43210" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i data-lucide="mail"></i> Gmail ID</label>
+                            <input type="email" id="wa_gmail" placeholder="example@gmail.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i data-lucide="credit-card"></i> Aadhaar Number</label>
+                            <input type="text" id="wa_aadhar" placeholder="1234 5678 9012" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i data-lucide="file-text"></i> PAN Number</label>
+                            <input type="text" id="wa_pan" placeholder="ABCDE1234F" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i data-lucide="map-pin"></i> Permanent Address</label>
+                            <input type="text" id="wa_address" placeholder="Residential info" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i data-lucide="store"></i> Store Name</label>
+                            <input type="text" id="wa_store_name" placeholder="TNPVC Interiors" required>
+                        </div>
+                        <div class="form-group">
+                            <label><i data-lucide="navigation"></i> Store Address</label>
+                            <input type="text" id="wa_store_address" placeholder="Work location" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label><i data-lucide="info"></i> Drinking Habit</label>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="wa_drinking" value="Yes"> Yes
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="wa_drinking" value="No" checked> No
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-whatsapp-submit">
+                        CONFIRM & SEND TO WHATSAPP <i data-lucide="message-circle"></i>
+                    </button>
+                </form>
+            </div>
+
+            <div id="successStep">
+                <div class="success-icon">
+                    <i data-lucide="check-circle" style="width: 50px; height: 50px;"></i>
+                </div>
+                <h2>Application Submitted!</h2>
+                <p>Your details have been shared. You can now join our official community group below.</p>
+                <a href="https://chat.whatsapp.com/FgCSKeHKhsP3A5RoirRDcL" target="_blank" class="btn-join-now">
+                    JOIN WHATSAPP GROUP <i data-lucide="users"></i>
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        document.getElementById('membershipForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('wa_name').value;
+            const phone = document.getElementById('wa_phone').value;
+            const gmail = document.getElementById('wa_gmail').value;
+            const aadhar = document.getElementById('wa_aadhar').value;
+            const pan = document.getElementById('wa_pan').value;
+            const address = document.getElementById('wa_address').value;
+            const storeName = document.getElementById('wa_store_name').value;
+            const storeAddress = document.getElementById('wa_store_address').value;
+            const drinking = document.querySelector('input[name="wa_drinking"]:checked').value;
+
+            const message = `*TNPVC Member Application*%0A%0A` +
+                `*Name:* ${name}%0A` +
+                `*Phone:* ${phone}%0A` +
+                `*Gmail:* ${gmail}%0A` +
+                `*Aadhaar:* ${aadhar}%0A` +
+                `*PAN:* ${pan}%0A` +
+                `*Address:* ${address}%0A` +
+                `*Store Name:* ${storeName}%0A` +
+                `*Store Address:* ${storeAddress}%0A` +
+                `*Drinking Habit:* ${drinking}`;
+
+            const whatsappUrl = `https://wa.me/919597666423?text=${message}`;
+            
+            window.open(whatsappUrl, '_blank');
+
+            document.getElementById('formStep').style.display = 'none';
+            document.getElementById('successStep').style.display = 'block';
+            lucide.createIcons();
+        });
+    </script>
+</body>
+
+</html>
